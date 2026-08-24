@@ -16,12 +16,12 @@ function getLLM() {
             const isOAuth = key.startsWith("AQ.");
             
             _llm = new ChatGoogleGenerativeAI({
-                model: "gemini-1.5-flash",
+                model: "gemini-1.5-flash-latest",
                 apiKey: isOAuth ? undefined : key,
                 ...(isOAuth ? { customHeaders: { Authorization: `Bearer ${key}` } } : {}),
                 temperature: 0.2,
             });
-            console.log(`[AI] Using Gemini AI (gemini-1.5-flash) [Mode: ${isOAuth ? "OAuth Bearer" : "Standard Key"}]`);
+            console.log(`[AI] Using Gemini AI (gemini-1.5-flash-latest) [Mode: ${isOAuth ? "OAuth Bearer" : "Standard Key"}]`);
             return _llm;
         } catch (err) {
             console.warn("[AI] Gemini init failed, trying Mistral:", err.message);
@@ -526,7 +526,7 @@ CORE RULES — FOLLOW STRICTLY:
                     const fallbackKey = process.env.GEMINI_API_KEY.trim();
                     const isOAuthFallback = fallbackKey.startsWith("AQ.");
                     const fallbackLLM = new ChatGoogleGenerativeAI({
-                        model: "gemini-1.5-flash",
+                        model: "gemini-1.5-flash-latest",
                         apiKey: isOAuthFallback ? undefined : fallbackKey,
                         ...(isOAuthFallback ? { customHeaders: { Authorization: `Bearer ${fallbackKey}` } } : {}),
                         temperature: 0.2,

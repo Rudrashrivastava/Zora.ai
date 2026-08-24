@@ -520,24 +520,24 @@ CORE RULES — FOLLOW STRICTLY:
             return { answer, sources: collectedSources };
         } catch (directError) {
             console.error("[LLM] Fallback direct invocation error:", directError.message);
-            // If primary provider hit rate limit (429), try switching provider dynamically
-            if (process.env.GEMINI_API_KEY) {
+            // If primary provider (Gemini) failed, execute secondary provider (Mistral AI)
+            if (process.env.MISTRAL_API_KEY) {
                 try {
-                    const fallbackKey = process.env.GEMINI_API_KEY.trim();
-                    const isOAuthFallback = fallbackKey.startsWith("AQ.");
-                    const fallbackLLM = new ChatGoogleGenerativeAI({
-                        model: "gemini-1.5-flash-latest",
-                        apiKey: isOAuthFallback ? undefined : fallbackKey,
-                        ...(isOAuthFallback ? { customHeaders: { Authorization: `Bearer ${fallbackKey}` } } : {}),
+                    console.log("[Failover] Switching to Mistral AI fallback...");
+                    const fallbackMistral = new ChatMistralAI({
+                        model: "mistral-small-latest",
+                        apiKey: process.env.MISTRAL_API_KEY,
                         temperature: 0.2,
                     });
-                    const fallbackResp = await fallbackLLM.invoke(chatHistory);
+                    const fallbackResp = await fallbackMistral.invoke(chatHistory);
                     const answer = typeof fallbackResp?.text === "string" ? fallbackResp.text : (fallbackResp?.content || "");
+                    console.log("[Failover] Mistral AI fallback response generated successfully");
                     return { answer, sources: collectedSources };
-                } catch (geminiErr) {
-                    console.error("[Gemini Failover Error]:", geminiErr.message);
+                } catch (mistralErr) {
+                    console.error("[Mistral Failover Error]:", mistralErr.message);
                 }
             }
+
             return {
                 answer: "The AI service is currently experiencing high demand or rate limits. Please try again in a few seconds.",
                 sources: collectedSources,

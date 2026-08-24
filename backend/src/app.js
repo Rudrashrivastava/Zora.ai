@@ -76,7 +76,7 @@ const staticDir = fs.existsSync(publicPath)
 
 if (staticDir) {
     app.use(express.static(staticDir));
-    app.get("*", (req, res, next) => {
+    app.use((req, res, next) => {
         if (req.path.startsWith("/api") || req.path.startsWith("/healthz") || req.path.startsWith("/readyz") || req.path.startsWith("/socket.io")) {
             return next();
         }

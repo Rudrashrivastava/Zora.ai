@@ -96,14 +96,17 @@ export async function register(req, res) {
         // Create user
         const user = await userModel.create({ username, email, password });
 
-        // Email verification token (JWT, 15 min)
+        // Email verification token (JWT, 24 hours)
         const emailVerificationToken = jwt.sign(
             { id: user._id.toString(), email: user.email, purpose: "email-verification" },
             ACCESS_TOKEN_SECRET,
-            { expiresIn: "15m" }
+            { expiresIn: "24h" }
         );
 
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+        const requestOrigin = req.headers.origin || `${req.protocol}://${req.get("host")}`;
+        const frontendUrl = (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes("localhost"))
+            ? process.env.FRONTEND_URL
+            : requestOrigin;
         const verificationUrl = `${frontendUrl}/verify-email?token=${emailVerificationToken}`;
 
         try {
@@ -395,7 +398,17 @@ export async function verifyEmail(req, res) {
     }
 
     try {
-        const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
+        let decoded;
+        try {
+            decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
+        } catch (jwtErr) {
+            // Try fallback secrets in case environment secrets were rotated/updated
+            if (process.env.JWT_SECRET) {
+                decoded = jwt.verify(token, process.env.JWT_SECRET);
+            } else {
+                throw jwtErr;
+            }
+        }
 
         if (decoded.purpose !== "email-verification") {
             return res.status(400).json({ success: false, message: "Invalid token purpose" });
@@ -404,7 +417,7 @@ export async function verifyEmail(req, res) {
         const user = await userModel.findById(decoded.id);
 
         if (!user) {
-            return res.status(404).json({ success: false, message: "User not found" });
+            return res.status(404).json({ success: false, message: "User account no longer exists." });
         }
 
         if (user.verified) {
@@ -416,7 +429,7 @@ export async function verifyEmail(req, res) {
 
         return res.status(200).json({ success: true, message: "Email verified successfully" });
     } catch (error) {
-        console.error("[VerifyEmail] Error:", error);
+        console.error("[VerifyEmail] Verification Error:", error.message);
         return res.status(400).json({
             success: false,
             message: "Verification link is invalid or has expired.",

@@ -11,8 +11,10 @@ export const initializeSocketConnection = () => {
     }
 
 
+    const socketUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== "undefined" && window.location.hostname !== "localhost" ? window.location.origin : "http://localhost:8000");
+
     socket = io(
-        "http://localhost:8000",
+        socketUrl,
         {
             withCredentials: true,
         }

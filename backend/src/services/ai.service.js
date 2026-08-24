@@ -10,7 +10,7 @@ let _llm = null;
 function getLLM() {
     if (_llm) return _llm;
 
-    if (process.env.GEMINI_API_KEY) {
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.startsWith("AIzaSy")) {
         try {
             _llm = new ChatGoogleGenerativeAI({
                 model: "gemini-1.5-flash",
@@ -517,7 +517,7 @@ CORE RULES — FOLLOW STRICTLY:
         } catch (directError) {
             console.error("[LLM] Fallback direct invocation error:", directError.message);
             // If primary provider hit rate limit (429), try switching provider dynamically
-            if (process.env.GEMINI_API_KEY) {
+            if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.startsWith("AIzaSy")) {
                 try {
                     const fallbackLLM = new ChatGoogleGenerativeAI({
                         model: "gemini-1.5-flash",

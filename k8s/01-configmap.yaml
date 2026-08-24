@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zora-config
+  namespace: zora-production
+data:
+  NODE_ENV: "production"
+  PORT: "8000"
+  CORS_ORIGIN: "https://zora.ai,https://www.zora.ai"
+  MONGO_URI: "mongodb://mongodb-service:27017/zora"
+  REDIS_URL: "redis://redis-service:6379"
+  FRONTEND_URL: "https://zora.ai"

@@ -10,14 +10,18 @@ let _llm = null;
 function getLLM() {
     if (_llm) return _llm;
 
-    if (process.env.GEMINI_API_KEY && !process.env.GEMINI_API_KEY.startsWith("AQ.")) {
+    if (process.env.GEMINI_API_KEY) {
         try {
+            const key = process.env.GEMINI_API_KEY.trim();
+            const isOAuth = key.startsWith("AQ.");
+            
             _llm = new ChatGoogleGenerativeAI({
                 model: "gemini-1.5-flash",
-                apiKey: process.env.GEMINI_API_KEY,
+                apiKey: isOAuth ? undefined : key,
+                ...(isOAuth ? { customHeaders: { Authorization: `Bearer ${key}` } } : {}),
                 temperature: 0.2,
             });
-            console.log("[AI] Using Gemini AI (gemini-1.5-flash)");
+            console.log(`[AI] Using Gemini AI (gemini-1.5-flash) [Mode: ${isOAuth ? "OAuth Bearer" : "Standard Key"}]`);
             return _llm;
         } catch (err) {
             console.warn("[AI] Gemini init failed, trying Mistral:", err.message);
@@ -517,11 +521,14 @@ CORE RULES — FOLLOW STRICTLY:
         } catch (directError) {
             console.error("[LLM] Fallback direct invocation error:", directError.message);
             // If primary provider hit rate limit (429), try switching provider dynamically
-            if (process.env.GEMINI_API_KEY && !process.env.GEMINI_API_KEY.startsWith("AQ.")) {
+            if (process.env.GEMINI_API_KEY) {
                 try {
+                    const fallbackKey = process.env.GEMINI_API_KEY.trim();
+                    const isOAuthFallback = fallbackKey.startsWith("AQ.");
                     const fallbackLLM = new ChatGoogleGenerativeAI({
                         model: "gemini-1.5-flash",
-                        apiKey: process.env.GEMINI_API_KEY,
+                        apiKey: isOAuthFallback ? undefined : fallbackKey,
+                        ...(isOAuthFallback ? { customHeaders: { Authorization: `Bearer ${fallbackKey}` } } : {}),
                         temperature: 0.2,
                     });
                     const fallbackResp = await fallbackLLM.invoke(chatHistory);

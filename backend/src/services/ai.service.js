@@ -516,9 +516,26 @@ CORE RULES — FOLLOW STRICTLY:
             return { answer, sources: collectedSources };
         } catch (directError) {
             console.error("[LLM] Fallback direct invocation error:", directError.message);
-            // If primary provider hit rate limit (429), try switching provider dynamically
+            // If primary provider fails (401 or 429), try secondary provider dynamically
+            if (process.env.MISTRAL_API_KEY) {
+                try {
+                    console.log("[Failover] Attempting Mistral AI fallback...");
+                    const fallbackMistral = new ChatMistralAI({
+                        model: "mistral-small-latest",
+                        apiKey: process.env.MISTRAL_API_KEY,
+                        temperature: 0.2,
+                    });
+                    const fallbackResp = await fallbackMistral.invoke(chatHistory);
+                    const answer = typeof fallbackResp?.text === "string" ? fallbackResp.text : (fallbackResp?.content || "");
+                    return { answer, sources: collectedSources };
+                } catch (mistralErr) {
+                    console.error("[Mistral Failover Error]:", mistralErr.message);
+                }
+            }
+
             if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.startsWith("AIzaSy")) {
                 try {
+                    console.log("[Failover] Attempting Gemini AI fallback...");
                     const fallbackLLM = new ChatGoogleGenerativeAI({
                         model: "gemini-1.5-flash",
                         apiKey: process.env.GEMINI_API_KEY,

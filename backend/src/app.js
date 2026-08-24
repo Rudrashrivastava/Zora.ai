@@ -65,14 +65,22 @@ app.use("/api/rag", ragRouter);
 app.use("/api/pdf", pdfRouter);
 
 // Serve Production React Build (Single-Server Deployment e.g., Render / Single VPS)
+const publicPath = path.join(__dirname, "../public");
 const frontendDistPath = path.join(__dirname, "../../frontend/dist");
-if (fs.existsSync(frontendDistPath)) {
-    app.use(express.static(frontendDistPath));
+
+const staticDir = fs.existsSync(publicPath)
+    ? publicPath
+    : fs.existsSync(frontendDistPath)
+    ? frontendDistPath
+    : null;
+
+if (staticDir) {
+    app.use(express.static(staticDir));
     app.get("*", (req, res, next) => {
         if (req.path.startsWith("/api") || req.path.startsWith("/healthz") || req.path.startsWith("/readyz") || req.path.startsWith("/socket.io")) {
             return next();
         }
-        res.sendFile(path.join(frontendDistPath, "index.html"));
+        res.sendFile(path.join(staticDir, "index.html"));
     });
 } else {
     // Root API fallback if dist is not present

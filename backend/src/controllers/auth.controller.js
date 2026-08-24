@@ -147,14 +147,11 @@ p { color: #4b5563; font-size: 15px; line-height: 24px; margin: 0 0 20px; }
 </html>`,
             });
         } catch (emailError) {
-            console.warn("[Register] Email send failed (Cloud SMTP restricted/timeout). Auto-verifying user:", emailError.message);
-            user.verified = true;
-            await user.save();
-
-            return res.status(201).json({
-                success: true,
-                message: "Registration successful! Account activated.",
-                user: { id: user._id, username: user.username, email: user.email },
+            console.error("[Register] Email send failed:", emailError.message);
+            await userModel.findByIdAndDelete(user._id);
+            return res.status(500).json({
+                success: false,
+                message: "Unable to send verification email to this address. Please try again with a valid email.",
             });
         }
 

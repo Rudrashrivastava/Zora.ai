@@ -433,10 +433,98 @@ STRUCTURE TO GENERATE IN MARKDOWN:
         }
     );
 
+    const getLiveWeatherTool = tool(
+        async ({ city }) => {
+            try {
+                const queryCity = city || "Bhopal";
+                console.log(`[WeatherTool] Fetching live weather for "${queryCity}"`);
+                const res = await fetch(`https://wttr.in/${encodeURIComponent(queryCity)}?format=j1`, {
+                    headers: { "User-Agent": "ZoraAI/1.0" },
+                    signal: AbortSignal.timeout(5000),
+                });
+
+                if (!res.ok) throw new Error(`Weather service HTTP ${res.status}`);
+                const data = await res.json();
+                const current = data?.current_condition?.[0];
+                const area = data?.nearest_area?.[0];
+
+                if (!current) throw new Error("No weather data found");
+
+                const cityName = area?.areaName?.[0]?.value || queryCity;
+                const country = area?.country?.[0]?.value || "";
+                const tempC = current.temp_C;
+                const tempF = current.temp_F;
+                const desc = current.weatherDesc?.[0]?.value || "Clear";
+                const humidity = current.humidity;
+                const windKmh = current.windspeedKmph;
+
+                return `REAL-TIME WEATHER GROUND TRUTH for ${cityName}${country ? `, ${country}` : ""}:
+• Temperature: ${tempC}°C (${tempF}°F)
+• Condition: ${desc}
+• Humidity: ${humidity}%
+• Wind Speed: ${windKmh} km/h`;
+            } catch (err) {
+                console.error("[getLiveWeather] Error:", err.message);
+                return `Failed to fetch live weather data for "${city}". Please use searchInternet tool for weather updates.`;
+            }
+        },
+        {
+            name: "getLiveWeather",
+            description:
+                "Fetch 100% real-time live weather, temperature, humidity, and atmospheric conditions for any city (e.g. Bhopal, Delhi, Mumbai, New York, London). YOU MUST ALWAYS CALL THIS TOOL for weather/temperature questions.",
+            schema: z.object({
+                city: z.string().describe("City name to fetch weather for, e.g. 'Bhopal', 'Delhi', 'London'"),
+            }),
+        }
+    );
+
+    const getLiveCurrencyExchangeTool = tool(
+        async ({ amount, fromCurrency, toCurrency }) => {
+            try {
+                const amt = parseFloat(amount) || 1;
+                const from = (fromCurrency || "USD").toUpperCase();
+                const to = (toCurrency || "INR").toUpperCase();
+
+                console.log(`[CurrencyTool] Converting ${amt} ${from} -> ${to}`);
+                const res = await fetch(`https://open.er-api.com/v6/latest/${from}`, {
+                    signal: AbortSignal.timeout(5000),
+                });
+
+                if (!res.ok) throw new Error(`Exchange rate API HTTP ${res.status}`);
+                const data = await res.json();
+                const rate = data?.rates?.[to];
+
+                if (!rate) throw new Error(`Rate not found for ${from} to ${to}`);
+
+                const converted = (amt * rate).toFixed(2);
+                return `REAL-TIME CURRENCY EXCHANGE GROUND TRUTH:
+• Base Amount: ${amt} ${from}
+• Target Currency: ${to}
+• Live Exchange Rate: 1 ${from} = ${rate} ${to}
+• Converted Total: ${amt} ${from} = ${converted} ${to} (Updated: ${data.time_last_update_utc || "Live"})`;
+            } catch (err) {
+                console.error("[getLiveCurrencyExchange] Error:", err.message);
+                return `Failed to fetch live exchange rate for ${fromCurrency} to ${toCurrency}.`;
+            }
+        },
+        {
+            name: "getLiveCurrencyExchange",
+            description:
+                "Fetch 100% real-time live forex currency exchange rates and convert amounts (e.g. USD to INR, EUR to INR, GBP to USD). YOU MUST ALWAYS CALL THIS TOOL for currency conversion or exchange rate questions.",
+            schema: z.object({
+                amount: z.number().optional().describe("Amount to convert (default: 1)"),
+                fromCurrency: z.string().describe("Base 3-letter currency code, e.g. 'USD', 'EUR', 'GBP', 'INR'"),
+                toCurrency: z.string().describe("Target 3-letter currency code, e.g. 'INR', 'USD', 'EUR'"),
+            }),
+        }
+    );
+
     return [
         searchInternetTool,
         retrieveDocumentsTool,
         getCurrentTimeTool,
+        getLiveWeatherTool,
+        getLiveCurrencyExchangeTool,
         calculateMathTool,
         fetchWebPageUrlTool,
         calculateFinancialTaxTool,

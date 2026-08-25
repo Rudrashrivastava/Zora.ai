@@ -548,11 +548,17 @@ function cleanResponseText(rawText) {
         .replace(/<\|[^>]*\|>/gi, "")
         // Remove functions.toolName:index patterns
         .replace(/functions\.[a-zA-Z0-9_]+:\d+/gi, "")
+        // Remove inline tool call JSON strings like searchInternet: {"query": "..."} or getLiveWeather: {...}
+        .replace(/[a-zA-Z0-9_]+\s*:\s*\{[^{}]*\}/gi, "")
         // Remove XML tool calls <getCurrentTime>...</getCurrentTime>
         .replace(/<[a-zA-Z0-9_\-|:]+>[\s\S]*?<\/[a-zA-Z0-9_\-|:]+>/gi, "")
         .replace(/<parameter=[^>]*>[\s\S]*?<\/parameter>/gi, "")
         .replace(/<[a-zA-Z0-9_\-|:]+>/gi, "")
         .replace(/<\/[a-zA-Z0-9_\-|:]+>/gi, "")
+        // Remove common tool intro preambles if isolated
+        .replace(/^I'll search for[\s\S]*?Let me fetch[\s\S]*?\.\s*/gi, "")
+        .replace(/^I'll check[\s\S]*?\.\s*/gi, "")
+        .replace(/^Let me check[\s\S]*?\.\s*/gi, "")
         .replace(/\n\s*\n\s*\n/g, "\n\n")
         .trim();
 }
@@ -625,7 +631,11 @@ CORE RULES — FOLLOW STRICTLY:
 4. RESPONSE FORMAT:
    - Synthesize a clear, factual answer in clean Markdown.
    - Use bold headers, bullet points, and code blocks where appropriate.
-   - Naturally cite sources when documents or web results are used.`;
+   - Naturally cite sources when documents or web results are used.
+
+5. ZERO TOOL PREAMBLE:
+   - Perform all tool calls silently behind the scenes.
+   - NEVER write text like "I'll search for...", "Let me fetch...", or raw tool calls like "searchInternet: {...}" in your response output.`;
 
         const chatHistory = [
             new SystemMessage(systemPrompt),

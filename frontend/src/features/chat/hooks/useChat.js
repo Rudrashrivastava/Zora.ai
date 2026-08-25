@@ -72,21 +72,23 @@ export const useChat = () => {
                 });
 
                 const { chat, messages } = data || {};
-                const actualChatId = chatId || chat?._id;
+                const rawChatId = chatId || chat?._id || chat?.id;
 
-                if (!actualChatId) {
+                if (!rawChatId) {
                     throw new Error("Chat ID was not returned by server");
                 }
 
+                const actualChatId = String(rawChatId);
+
                 // CREATE OR UPDATE CHAT IN REDUX
-                if (!chatId && chat) {
-                    dispatch(
-                        createNewChat({
-                            chatId: chat._id,
-                            title: chat.title || data?.title || "New Search",
-                        })
-                    );
-                } else if (chat?.title || data?.title) {
+                dispatch(
+                    createNewChat({
+                        chatId: actualChatId,
+                        title: chat?.title || data?.title || "New Search",
+                    })
+                );
+
+                if (chat?.title || data?.title) {
                     dispatch(
                         renameChatLocal({
                             chatId: actualChatId,
@@ -98,7 +100,7 @@ export const useChat = () => {
                 // SYNC MESSAGES (including sources)
                 if (messages && messages.length > 0) {
                     const formattedMessages = messages.map((msg) => ({
-                        id: msg._id,
+                        id: String(msg._id || msg.id),
                         content: msg.content,
                         role: msg.role,
                         sources: msg.sources || [],

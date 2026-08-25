@@ -19,14 +19,19 @@ const chatSlice = createSlice({
         // =========================================
         createNewChat: (state, action) => {
             const { chatId, title } = action.payload;
+            const cid = String(chatId);
 
-            state.chats[chatId] = {
-                id: chatId,
-                title: title || "New Chat",
-                messages: [],
-                pinned: false,
-                lastUpdated: new Date().toISOString(),
-            };
+            if (!state.chats[cid]) {
+                state.chats[cid] = {
+                    id: cid,
+                    title: title || "New Search",
+                    messages: [],
+                    pinned: false,
+                    lastUpdated: new Date().toISOString(),
+                };
+            } else if (title) {
+                state.chats[cid].title = title;
+            }
         },
 
         // =========================================
@@ -34,19 +39,26 @@ const chatSlice = createSlice({
         // =========================================
         addNewMessage: (state, action) => {
             const { chatId, content, role, id, sources } = action.payload;
+            const cid = String(chatId);
 
-            if (!state.chats[chatId]) {
-                return;
+            if (!state.chats[cid]) {
+                state.chats[cid] = {
+                    id: cid,
+                    title: "New Search",
+                    messages: [],
+                    pinned: false,
+                    lastUpdated: new Date().toISOString(),
+                };
             }
 
-            state.chats[chatId].messages.push({
+            state.chats[cid].messages.push({
                 id: id || `${Date.now()}-${Math.random()}`,
                 content,
                 role,
                 sources: sources || [],
             });
 
-            state.chats[chatId].lastUpdated = new Date().toISOString();
+            state.chats[cid].lastUpdated = new Date().toISOString();
         },
 
         // =========================================
@@ -54,13 +66,20 @@ const chatSlice = createSlice({
         // =========================================
         addMessages: (state, action) => {
             const { chatId, messages } = action.payload;
+            const cid = String(chatId);
 
-            if (!state.chats[chatId]) {
-                return;
+            if (!state.chats[cid]) {
+                state.chats[cid] = {
+                    id: cid,
+                    title: "New Search",
+                    messages: [],
+                    pinned: false,
+                    lastUpdated: new Date().toISOString(),
+                };
             }
 
-            state.chats[chatId].messages = messages;
-            state.chats[chatId].lastUpdated = new Date().toISOString();
+            state.chats[cid].messages = messages;
+            state.chats[cid].lastUpdated = new Date().toISOString();
         },
 
         // =========================================
@@ -75,12 +94,15 @@ const chatSlice = createSlice({
         // =========================================
         mergeChats: (state, action) => {
             const incoming = action.payload;
-            const next = {};
+            const next = { ...state.chats };
             for (const chat of incoming) {
-                next[chat.id] = {
+                const cid = String(chat.id || chat._id);
+                const existing = state.chats[cid];
+                next[cid] = {
                     ...chat,
+                    id: cid,
                     // Preserve already-loaded messages so they don't disappear
-                    messages: state.chats[chat.id]?.messages || [],
+                    messages: existing?.messages && existing.messages.length > 0 ? existing.messages : (chat.messages || []),
                 };
             }
             state.chats = next;

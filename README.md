@@ -1,4 +1,13 @@
-# 🚀 Zora.ai — Complete Master Guide & Setup Playbook
+# 🚀 Zora.ai — Enterprise AI Search & RAG Knowledge Engine
+### *Inspired by Perplexity.ai | Built with Node.js, Express, React, LangChain & MongoDB*
+
+---
+
+> 📖 **Official Project Documentation & Learning Guides:**
+> - 📄 **[Master System Guide (Code-Verified)](./ZORA_COMPLETE_MASTER_GUIDE.md)** — Complete architecture, schemas, API routes, 3-tier failover & interview Q&A.
+> - 🧠 **[Deep Technical Knowledge Guide (Hinglish)](./ZORA_DEEP_TECHNICAL_GUIDE.md)** — 10+ page beginner-to-advanced technical deep dive explaining all 30 technologies.
+> - ⚙️ **[Engineering Standards & Rules (GEMINI.md)](./GEMINI.md)** — Core workspace rules for production readiness.
+> - 🚢 **[Deployment Guide](./DEPLOYMENT.md)** — Docker, Render & Kubernetes deployment blueprint.
 
 ---
 
@@ -19,7 +28,7 @@
 ### 30-Second Elevator Pitch
 > **"Zora.ai is a Full-Stack Real-Time AI Search and Retrieval-Augmented Generation (RAG) Engine inspired by Perplexity.ai.**
 > 
-> **Standard LLMs often suffer from outdated knowledge cutoffs and hallucinations. Zora.ai solves this by combining Live Web Search, Custom Vector RAG for uploaded document QA, and a Dual-AI Failover Architecture to deliver real-time, cited, and accurate answers."**
+> **Standard LLMs often suffer from outdated knowledge cutoffs and hallucinations. Zora.ai solves this by combining Live Web Search, Custom Vector RAG for uploaded document QA, and a 3-Tier Multi-Provider Failover Pipeline to deliver real-time, cited, and accurate answers."**
 
 ---
 

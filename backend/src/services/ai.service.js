@@ -148,7 +148,8 @@ function createTrackedTools(userId, collectedSources) {
                     month: "long",
                     day: "numeric",
                 });
-                return `EXACT LIVE SYSTEM CLOCK GROUND TRUTH (${tz}): ${timeStr} IST on ${dateStr}`;
+                const tzLabel = tz.includes("Kolkata") ? "IST" : tz;
+                return `EXACT LIVE SYSTEM CLOCK GROUND TRUTH (${tz}): ${timeStr} ${tzLabel} on ${dateStr}`;
             } catch (err) {
                 return `EXACT LIVE SYSTEM CLOCK GROUND TRUTH: ${new Date().toLocaleString()}`;
             }

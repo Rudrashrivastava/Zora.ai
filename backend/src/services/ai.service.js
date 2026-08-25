@@ -527,17 +527,17 @@ STRUCTURE TO GENERATE IN MARKDOWN:
     return [
         searchInternetTool,
         retrieveDocumentsTool,
-                        getCurrentTimeTool,
-                        getLiveWeatherTool,
-                        getLiveCurrencyExchangeTool,
-                        calculateMathTool,
-                        fetchWebPageUrlTool,
-                        calculateFinancialTaxTool,
-                        convertUnitsAndEngineeringTool,
-                        pedagogicalTutorTool,
-                        rgpvNotesGeneratorTool,
-                    ];
-                }
+        getCurrentTimeTool,
+        getLiveWeatherTool,
+        getLiveCurrencyExchangeTool,
+        calculateMathTool,
+        fetchWebPageUrlTool,
+        calculateFinancialTaxTool,
+        convertUnitsAndEngineeringTool,
+        pedagogicalTutorTool,
+        rgpvNotesGeneratorTool,
+    ];
+}
 
 export function cleanResponseText(rawText) {
     if (!rawText || typeof rawText !== "string") return "";

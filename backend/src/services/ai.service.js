@@ -457,15 +457,18 @@ export async function generateResponse(messages, userId = null) {
 
     const agent = createAgent({ model: llm, tools });
 
-    // Dynamic date and time so LLM always knows exact live clock time
+    // Dynamic date and time in IST (Asia/Kolkata) so LLM always knows exact live clock time
     const now = new Date();
+    const timeZone = "Asia/Kolkata";
     const currentDateStr = now.toLocaleDateString("en-US", {
+        timeZone,
         weekday: "long",
         year: "numeric",
         month: "long",
         day: "numeric",
     });
     const currentTimeStr = now.toLocaleTimeString("en-US", {
+        timeZone,
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
@@ -474,7 +477,7 @@ export async function generateResponse(messages, userId = null) {
 
     const systemPrompt = `You are Zora.ai, an advanced AI search and knowledge assistant (like Perplexity AI).
 
-EXACT CURRENT TIME & DATE: ${currentDateStr} at ${currentTimeStr} (Year: ${currentYear}).
+EXACT CURRENT TIME & DATE (IST): ${currentDateStr} at ${currentTimeStr} IST (Year: ${currentYear}).
 
 CORE RULES — FOLLOW STRICTLY:
 1. FOR CURRENT TIME / CLOCK / TODAY'S DATE:

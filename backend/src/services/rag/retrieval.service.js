@@ -82,9 +82,13 @@ export async function retrieveDocuments(query, userId = null, topK = 4) {
         // Sort by score descending and take topK
         scoredChunks.sort((a, b) => b.score - a.score);
 
-        return scoredChunks
-            .filter((item) => item.score > 0.4)
-            .slice(0, topK);
+        const filtered = scoredChunks.filter((item) => item.score > 0.2);
+        if (filtered.length > 0) {
+            return filtered.slice(0, topK);
+        }
+
+        // Fallback: return top chunks regardless of score if user has uploaded docs
+        return scoredChunks.slice(0, topK);
 
     } catch (error) {
         console.error("Retrieval error:", error);

@@ -541,7 +541,7 @@ STRUCTURE TO GENERATE IN MARKDOWN:
 
 export function cleanResponseText(rawText) {
     if (!rawText || typeof rawText !== "string") return "";
-    return rawText
+    let cleaned = rawText
         // Remove special Gemini tool section blocks: <|tool_calls_section_begin|> ... <|tool_calls_section_end|>
         .replace(/<\|tool_calls_section_begin\|>[\s\S]*?<\|tool_calls_section_end\|>/gi, "")
         .replace(/<\|tool_call_begin\|>[\s\S]*?<\|tool_call_end\|>/gi, "")
@@ -555,12 +555,15 @@ export function cleanResponseText(rawText) {
         .replace(/<parameter=[^>]*>[\s\S]*?<\/parameter>/gi, "")
         .replace(/<[a-zA-Z0-9_\-|:]+>/gi, "")
         .replace(/<\/[a-zA-Z0-9_\-|:]+>/gi, "")
-        // Remove common tool intro preambles if isolated
-        .replace(/^I'll search for[\s\S]*?Let me fetch[\s\S]*?\.\s*/gi, "")
-        .replace(/^I'll check[\s\S]*?\.\s*/gi, "")
-        .replace(/^Let me check[\s\S]*?\.\s*/gi, "")
         .replace(/\n\s*\n\s*\n/g, "\n\n")
         .trim();
+
+    const lines = cleaned.split("\n");
+    if (lines.length > 1 && /^I'll search|^Let me check|^I will check|^Searching for|^Let me fetch/i.test(lines[0].trim())) {
+        cleaned = lines.slice(1).join("\n").trim();
+    }
+
+    return cleaned;
 }
 
 function getISTDateAndFormat() {
@@ -650,8 +653,20 @@ CORE RULES — FOLLOW STRICTLY:
 
         try {
             const response = await agent.invoke({ messages: chatHistory });
-            const lastMsg = response.messages[response.messages.length - 1];
-            const rawAnswer = typeof lastMsg?.text === "string" ? lastMsg.text : (lastMsg?.content || "");
+            let rawAnswer = "";
+
+            if (response?.messages && response.messages.length > 0) {
+                for (let i = response.messages.length - 1; i >= 0; i--) {
+                    const msg = response.messages[i];
+                    const text = typeof msg?.text === "string" ? msg.text : (typeof msg?.content === "string" ? msg.content : "");
+                    const isAi = msg._getType() === "ai" || msg.role === "ai" || msg.constructor?.name === "AIMessage";
+                    if (isAi && text && text.trim().length > 0) {
+                        rawAnswer = text;
+                        break;
+                    }
+                }
+            }
+
             const answer = cleanResponseText(rawAnswer);
 
             return { answer, sources: collectedSources };

@@ -434,13 +434,13 @@ STRUCTURE TO GENERATE IN MARKDOWN:
     );
 
     const getLiveWeatherTool = tool(
-        async ({ city }) => {
+        async ({ location }) => {
             try {
-                const queryCity = city || "Bhopal";
-                console.log(`[WeatherTool] Fetching live weather for "${queryCity}"`);
-                const res = await fetch(`https://wttr.in/${encodeURIComponent(queryCity)}?format=j1`, {
+                const targetLoc = location && location.trim() ? location.trim() : "auto";
+                console.log(`[WeatherTool] Fetching dynamic live weather for "${targetLoc}"`);
+                const res = await fetch(`https://wttr.in/${encodeURIComponent(targetLoc)}?format=j1`, {
                     headers: { "User-Agent": "ZoraAI/1.0" },
-                    signal: AbortSignal.timeout(5000),
+                    signal: AbortSignal.timeout(6000),
                 });
 
                 if (!res.ok) throw new Error(`Weather service HTTP ${res.status}`);
@@ -450,30 +450,33 @@ STRUCTURE TO GENERATE IN MARKDOWN:
 
                 if (!current) throw new Error("No weather data found");
 
-                const cityName = area?.areaName?.[0]?.value || queryCity;
+                const cityName = area?.areaName?.[0]?.value || targetLoc;
+                const region = area?.region?.[0]?.value || "";
                 const country = area?.country?.[0]?.value || "";
                 const tempC = current.temp_C;
                 const tempF = current.temp_F;
                 const desc = current.weatherDesc?.[0]?.value || "Clear";
                 const humidity = current.humidity;
                 const windKmh = current.windspeedKmph;
+                const feelsLikeC = current.FeelsLikeC;
 
-                return `REAL-TIME WEATHER GROUND TRUTH for ${cityName}${country ? `, ${country}` : ""}:
-• Temperature: ${tempC}°C (${tempF}°F)
-• Condition: ${desc}
+                return `REAL-TIME WEATHER GROUND TRUTH for ${cityName}${region ? `, ${region}` : ""}${country ? `, ${country}` : ""}:
+• Current Temperature: ${tempC}°C (${tempF}°F)
+• Feels Like: ${feelsLikeC}°C
+• Weather Condition: ${desc}
 • Humidity: ${humidity}%
 • Wind Speed: ${windKmh} km/h`;
             } catch (err) {
                 console.error("[getLiveWeather] Error:", err.message);
-                return `Failed to fetch live weather data for "${city}". Please use searchInternet tool for weather updates.`;
+                return `Failed to fetch live weather data for "${location}". Please use searchInternet tool for weather updates.`;
             }
         },
         {
             name: "getLiveWeather",
             description:
-                "Fetch 100% real-time live weather, temperature, humidity, and atmospheric conditions for any city (e.g. Bhopal, Delhi, Mumbai, New York, London). YOU MUST ALWAYS CALL THIS TOOL for weather/temperature questions.",
+                "Fetch 100% real-time dynamic weather for ANY city, state, country, or location worldwide (e.g. 'Delhi', 'Mumbai', 'Indore', 'London', 'Tokyo', 'Paris', 'New York'). Pass the requested place/city name dynamically.",
             schema: z.object({
-                city: z.string().describe("City name to fetch weather for, e.g. 'Bhopal', 'Delhi', 'London'"),
+                location: z.string().describe("The dynamic city, state, country, or place name requested by the user, e.g. 'Delhi', 'Indore', 'Tokyo', 'London', 'New York'"),
             }),
         }
     );

@@ -541,10 +541,17 @@ STRUCTURE TO GENERATE IN MARKDOWN:
 function cleanResponseText(rawText) {
     if (!rawText || typeof rawText !== "string") return "";
     return rawText
-        .replace(/<[a-zA-Z0-9_]+>[\s\S]*?<\/[a-zA-Z0-9_]+>/gi, "")
+        // Remove special Gemini tool section blocks: <|tool_calls_section_begin|> ... <|tool_calls_section_end|>
+        .replace(/<\|tool_calls_section_begin\|>[\s\S]*?<\|tool_calls_section_end\|>/gi, "")
+        .replace(/<\|tool_call_begin\|>[\s\S]*?<\|tool_call_end\|>/gi, "")
+        .replace(/<\|[^>]*\|>/gi, "")
+        // Remove functions.toolName:index patterns
+        .replace(/functions\.[a-zA-Z0-9_]+:\d+/gi, "")
+        // Remove XML tool calls <getCurrentTime>...</getCurrentTime>
+        .replace(/<[a-zA-Z0-9_\-|:]+>[\s\S]*?<\/[a-zA-Z0-9_\-|:]+>/gi, "")
         .replace(/<parameter=[^>]*>[\s\S]*?<\/parameter>/gi, "")
-        .replace(/<[a-zA-Z0-9_]+>/gi, "")
-        .replace(/<\/[a-zA-Z0-9_]+>/gi, "")
+        .replace(/<[a-zA-Z0-9_\-|:]+>/gi, "")
+        .replace(/<\/[a-zA-Z0-9_\-|:]+>/gi, "")
         .replace(/\n\s*\n\s*\n/g, "\n\n")
         .trim();
 }

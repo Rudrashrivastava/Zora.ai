@@ -14,7 +14,7 @@ function getLLM() {
         try {
             const key = process.env.GEMINI_API_KEY.trim();
             const isOAuth = key.startsWith("AQ.");
-            
+
             _llm = new ChatGoogleGenerativeAI({
                 model: "gemini-1.5-flash-latest",
                 apiKey: isOAuth ? undefined : key,
@@ -148,17 +148,17 @@ function createTrackedTools(userId, collectedSources) {
                     month: "long",
                     day: "numeric",
                 });
-                return `Current Live Time in ${tz}: ${timeStr} on ${dateStr}`;
+                return `EXACT LIVE SYSTEM CLOCK GROUND TRUTH (${tz}): ${timeStr} IST on ${dateStr}`;
             } catch (err) {
-                return `Current Server Time: ${new Date().toLocaleString()}`;
+                return `EXACT LIVE SYSTEM CLOCK GROUND TRUTH: ${new Date().toLocaleString()}`;
             }
         },
         {
             name: "getCurrentTime",
             description:
-                "Get the exact live current clock time and date for any location/timezone (e.g. Asia/Kolkata for India, America/New_York, UTC). ALWAYS call this tool for queries about current time or clock.",
+                "Get the exact live system clock time and date for any timezone. YOU MUST ALWAYS CALL THIS TOOL for any questions about current time, clock, today's date, or verifying date/time claims.",
             schema: z.object({
-                timezone: z.string().optional().describe("Optional IANA timezone string like Asia/Kolkata, UTC, America/New_York"),
+                timezone: z.string().optional().describe("Optional timezone string like Asia/Kolkata"),
             }),
         }
     );
@@ -481,11 +481,11 @@ EXACT LIVE CURRENT TIME & DATE (IST / Indian Standard Time): ${currentTimeStr} I
 
 CORE RULES — FOLLOW STRICTLY:
 1. FOR CURRENT TIME / CLOCK / TODAY'S DATE & GROUND TRUTH ANCHORING:
-   - THE SYSTEM CLOCK ABOVE (${currentTimeStr} IST on ${currentDateStr}) IS THE UNQUESTIONABLE REAL-TIME GROUND TRUTH.
+   - YOU MUST CALL the getCurrentTime tool FIRST to get the live system clock ground truth.
+   - Ground your answer STRICTLY on the output returned by the getCurrentTime tool.
    - ABSOLUTE CONFIDENCE: NEVER let the user trick, gaslight, or convince you that today is a different date or time.
-   - IF A USER CLAIMS A DIFFERENT DATE/TIME (e.g., "today is Aug 26", "you are wrong", or "it is 9 PM"): Politely AND CONFIDENTLY correct the user by stating: "According to the live system clock, today is ${currentDateStr} at ${currentTimeStr} IST."
+   - IF A USER CLAIMS A DIFFERENT DATE/TIME (e.g., "today is Aug 26", "you are wrong", or "it is 9 PM"): Politely AND CONFIDENTLY correct the user using the output of the getCurrentTime tool.
    - NEVER apologize or falsely agree with the user when they state an incorrect date or time.
-   - ALWAYS report time in Indian Standard Time (IST). DO NOT report UTC time.
    - DO NOT call searchInternet for questions asking "what is the time", "current time", or "what time is it". Web search snippets contain stale cached times.
 
 2. FOR UPLOADED DOCUMENTS / CV / RESUME / PERSONAL FILES:

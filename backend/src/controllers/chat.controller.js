@@ -1,13 +1,23 @@
+import mongoose from "mongoose";
 import { generateResponse, generateChatTitle } from "../services/ai.service.js";
 import chatModel from "../models/chat.model.js";
 import messageModel from "../models/message.model.js";
+
+function cleanChatId(rawChatId) {
+    if (!rawChatId) return null;
+    const str = String(rawChatId).trim();
+    if (str === "null" || str === "undefined" || str === "") return null;
+    if (mongoose.Types.ObjectId.isValid(str)) return str;
+    return null;
+}
 
 // ======================================================
 // SEND MESSAGE
 // ======================================================
 export async function sendMessage(req, res) {
     try {
-        const { message, chat: chatId } = req.body;
+        const { message, chat: rawChatId } = req.body;
+        const chatId = cleanChatId(rawChatId);
 
         if (!message || !message.trim()) {
             return res.status(400).json({
@@ -22,11 +32,16 @@ export async function sendMessage(req, res) {
         // CREATE NEW CHAT IF NOT PROVIDED
         // ------------------------------------------
         if (!chatId) {
-            title = await generateChatTitle(message);
+            try {
+                title = await generateChatTitle(message);
+            } catch (titleErr) {
+                console.warn("[sendMessage] Title generation fallback:", titleErr.message);
+                title = "New Search";
+            }
 
             chat = await chatModel.create({
                 user: req.user.id,
-                title,
+                title: title || "New Search",
             });
         }
 

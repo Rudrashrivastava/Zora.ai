@@ -212,4 +212,4 @@ Render automatically detects the GitHub push, builds the Docker container, and d
 
 ---
 
-*Zora.ai — Enterprise AI Search & RAG Engine | Maintained by Rudra Shrivastava*
+*Zora.ai — Enterprise AI Search & RAG Engine | Maintained by Rudra Shrivastava *

@@ -5,45 +5,58 @@ import * as z from "zod";
 import { searchInternet } from "./internet.service.js";
 import { retrieveDocuments } from "./rag/retrieval.service.js";
 
-// Lazy-initialize LLM so process.env is always populated by the time it's called
-let _llm = null;
-function getLLM() {
-    if (_llm) return _llm;
+/**
+ * Builds the ordered list of AI provider factory functions.
+ * Each provider is created fresh per-call (no singleton) so p-retry
+ * state from a failed provider never leaks into the next one.
+ */
+function buildProviders(chatHistory) {
+    const geminiKey = process.env.GEMINI_API_KEY?.trim();
+    const mistralKey = process.env.MISTRAL_API_KEY?.trim();
+    const providers = [];
 
-    if (process.env.GEMINI_API_KEY) {
-        try {
-            const key = process.env.GEMINI_API_KEY.trim();
-            const isOAuth = key.startsWith("AQ.");
-            const modelName = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+    if (geminiKey) {
+        // Detect OAuth Bearer Token (starts with "AQ.") vs standard API key
+        const isOAuth = geminiKey.startsWith("AQ.");
 
-            _llm = new ChatGoogleGenerativeAI({
-                model: modelName,
-                apiKey: isOAuth ? undefined : key,
-                ...(isOAuth ? { customHeaders: { Authorization: `Bearer ${key}` } } : {}),
-                temperature: 0.2,
-            });
-            console.log(`[AI] Using Gemini AI (${modelName}) [Mode: ${isOAuth ? "OAuth Bearer" : "Standard Key"}]`);
-            return _llm;
-        } catch (err) {
-            console.warn("[AI] Gemini init failed, trying Mistral:", err.message);
-        }
+        // OAuth tokens use Authorization: Bearer header; standard keys use apiKey param
+        const geminiConfig = (model) => isOAuth
+            ? { model, apiKey: undefined, customHeaders: { Authorization: `Bearer ${geminiKey}` }, temperature: 0.2, maxRetries: 0 }
+            : { model, apiKey: geminiKey, temperature: 0.2, maxRetries: 0 };
+
+        console.log(`[AI] Gemini mode: ${isOAuth ? "OAuth Bearer Token (AQ.)" : "Standard API Key"}`);
+
+        // Tier 1: Gemini 1.5 Flash Latest (stable alias always resolves correctly)
+        providers.push({
+            name: "Gemini 1.5 Flash",
+            invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-1.5-flash-latest")).invoke(chatHistory),
+        });
+        // Tier 2: Gemini 1.5 Pro Latest
+        providers.push({
+            name: "Gemini 1.5 Pro",
+            invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-1.5-pro-latest")).invoke(chatHistory),
+        });
     }
 
-    if (process.env.MISTRAL_API_KEY) {
-        try {
-            _llm = new ChatMistralAI({
-                model: "mistral-small-latest",
-                apiKey: process.env.MISTRAL_API_KEY,
-                temperature: 0.2,
-            });
-            console.log("[AI] Using Mistral AI");
-            return _llm;
-        } catch (err) {
-            console.warn("[AI] Mistral init failed:", err.message);
-        }
+    if (mistralKey) {
+        // Tier 3: Mistral AI (completely independent provider — always works when Gemini is down)
+        providers.push({
+            name: "Mistral AI (mistral-small-latest)",
+            invoke: () =>
+                new ChatMistralAI({
+                    model: "mistral-small-latest",
+                    apiKey: mistralKey,
+                    temperature: 0.2,
+                    maxRetries: 0,
+                }).invoke(chatHistory),
+        });
     }
 
-    throw new Error("No AI provider configured. Set GEMINI_API_KEY or MISTRAL_API_KEY in .env");
+    if (providers.length === 0) {
+        throw new Error("No AI provider configured. Set GEMINI_API_KEY or MISTRAL_API_KEY in .env");
+    }
+
+    return providers;
 }
 
 /**
@@ -602,7 +615,6 @@ function getISTDateAndFormat() {
 export async function generateResponse(messages, userId = null) {
     const collectedSources = [];
     try {
-        const llm = getLLM();
         const { currentDateStr, currentTimeStr, currentYear } = getISTDateAndFormat();
 
         const lastUserMsgObj = (messages || []).slice().reverse().find((m) => m.role === "user");
@@ -711,16 +723,52 @@ CORE RULES — FOLLOW STRICTLY:
                 .filter(Boolean),
         ];
 
-        // 4. GENERATE RESPONSE IN ONE SINGLE PASS
-        const response = await llm.invoke(chatHistory);
-        const rawAnswer = typeof response?.text === "string" ? response.text : (response?.content || "");
-        const answer = cleanResponseText(rawAnswer);
+        // 4. GENERATE RESPONSE — 3-TIER FAILOVER LOOP
+        // Each provider has its own isolated try/catch.
+        // p-retry/429 errors from one provider CANNOT escape into the next iteration.
+        const providers = buildProviders(chatHistory);
+        let rawAnswer = "";
+        let lastError = null;
 
+        for (const provider of providers) {
+            try {
+                console.log(`[AI] Trying provider: ${provider.name}`);
+                const response = await provider.invoke();
+                const text = typeof response?.text === "string" ? response.text
+                    : typeof response?.content === "string" ? response.content
+                    : Array.isArray(response?.content)
+                        ? response.content.map((c) => (typeof c === "string" ? c : c?.text || "")).join("")
+                        : "";
+
+                if (text?.trim()) {
+                    rawAnswer = text;
+                    console.log(`[AI] ✅ Provider succeeded: ${provider.name}`);
+                    break; // Got a valid answer — stop trying
+                }
+                console.warn(`[AI] ${provider.name} returned empty response. Trying next...`);
+            } catch (providerErr) {
+                lastError = providerErr;
+                const status = providerErr?.status || providerErr?.statusCode || "?";
+                console.warn(`[AI] ⚠️ ${provider.name} failed (HTTP ${status}): ${providerErr.message}. Trying next provider...`);
+                // Silently continue to next provider
+            }
+        }
+
+        if (!rawAnswer?.trim()) {
+            console.error("[AI] All providers failed. Last error:", lastError?.message);
+            return {
+                answer: "⚠️ All AI providers are temporarily unavailable (quota limits or network issue). Please try again in a few minutes.",
+                sources: collectedSources,
+            };
+        }
+
+        const answer = cleanResponseText(rawAnswer);
         return { answer, sources: collectedSources };
+
     } catch (topLevelErr) {
         console.error("[generateResponse Top-Level Error]:", topLevelErr);
         return {
-            answer: "The AI service is currently processing your request. Please try again in a moment.",
+            answer: "⚠️ An unexpected error occurred. Please try again.",
             sources: [],
         };
     }
@@ -732,35 +780,39 @@ CORE RULES — FOLLOW STRICTLY:
 export async function generateChatTitle(message) {
     if (!message || !message.trim()) return "New Search";
 
-    try {
-        const llm = getLLM();
-        const response = await llm.invoke([
-            new SystemMessage("Generate a concise 2-4 word chat title summarizing the user request. Output ONLY the title text, no quotes, no markdown, no punctuation."),
-            new HumanMessage(`Message: "${message}"`),
-        ]);
+    const titleMessages = [
+        new SystemMessage("Generate a concise 2-4 word chat title summarizing the user request. Output ONLY the title text, no quotes, no markdown, no punctuation."),
+        new HumanMessage(`Message: "${message}"`),
+    ];
 
-        let rawText = "";
-        if (typeof response?.text === "string" && response.text.trim()) {
-            rawText = response.text;
-        } else if (typeof response?.content === "string") {
-            rawText = response.content;
-        } else if (Array.isArray(response?.content)) {
-            rawText = response.content
-                .map((c) => (typeof c === "string" ? c : c?.text || ""))
-                .join("");
-        }
+    // Use same 3-tier failover for title generation
+    const providers = buildProviders(titleMessages);
+    for (const provider of providers) {
+        try {
+            const response = await provider.invoke();
+            let rawText = "";
+            if (typeof response?.text === "string" && response.text.trim()) {
+                rawText = response.text;
+            } else if (typeof response?.content === "string") {
+                rawText = response.content;
+            } else if (Array.isArray(response?.content)) {
+                rawText = response.content
+                    .map((c) => (typeof c === "string" ? c : c?.text || ""))
+                    .join("");
+            }
 
-        const title = rawText.replace(/["'#*`]/g, "").trim();
-        if (title && title.length > 0 && title.toLowerCase() !== "new chat") {
-            return title.slice(0, 50);
+            const title = rawText.replace(/["'#*`]/g, "").trim();
+            if (title && title.length > 0 && title.toLowerCase() !== "new chat") {
+                return title.slice(0, 50);
+            }
+        } catch (err) {
+            console.warn(`[generateChatTitle] ${provider.name} failed: ${err.message}. Trying next...`);
         }
-    } catch (error) {
-        console.error("[generateChatTitle] AI invocation error:", error.message);
     }
 
-    // Smart fallback: extract 3-5 key words from the message
+    // Smart fallback: extract first 4 words from message
     const cleanMsg = message.trim().replace(/^["']|["']$/g, "").replace(/[\r\n]+/g, " ");
-    const words = cleanMsg.split(/\s+/).slice(0, 5);
+    const words = cleanMsg.split(/\s+/).slice(0, 4);
     const fallbackTitle = words
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");

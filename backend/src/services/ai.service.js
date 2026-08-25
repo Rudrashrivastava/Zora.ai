@@ -14,7 +14,7 @@ function getLLM() {
         try {
             const key = process.env.GEMINI_API_KEY.trim();
             const isOAuth = key.startsWith("AQ.");
-            const modelName = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+            const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
             _llm = new ChatGoogleGenerativeAI({
                 model: modelName,
@@ -555,6 +555,35 @@ function cleanResponseText(rawText) {
         .replace(/<\/[a-zA-Z0-9_\-|:]+>/gi, "")
         .replace(/\n\s*\n\s*\n/g, "\n\n")
         .trim();
+}
+
+function getISTDateAndFormat() {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istTime = new Date(now.getTime() + istOffset);
+
+    const year = istTime.getUTCFullYear();
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[istTime.getUTCMonth()];
+    const date = String(istTime.getUTCDate()).padStart(2, "0");
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const dayName = days[istTime.getUTCDay()];
+
+    let hours = istTime.getUTCHours();
+    const minutes = String(istTime.getUTCMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedHours = String(hours).padStart(2, "0");
+
+    const currentDateStr = `${dayName}, ${month} ${date}, ${year}`;
+    const currentTimeStr = `${formattedHours}:${minutes} ${ampm}`;
+
+    return {
+        currentDateStr,
+        currentTimeStr,
+        currentYear: year,
+    };
 }
 
 /**

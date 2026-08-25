@@ -100,7 +100,7 @@ export async function sendMessage(req, res) {
         const updatedChat = await chatModel.findByIdAndUpdate(
             actualChatId,
             { updatedAt: new Date() },
-            { new: true }
+            { returnDocument: "after" }
         );
 
         // ------------------------------------------

@@ -480,9 +480,12 @@ export async function generateResponse(messages, userId = null) {
 EXACT LIVE CURRENT TIME & DATE (IST / Indian Standard Time): ${currentTimeStr} IST on ${currentDateStr} (Year: ${currentYear}).
 
 CORE RULES — FOLLOW STRICTLY:
-1. FOR CURRENT TIME / CLOCK / TODAY'S DATE:
-   - ALWAYS state the time in Indian Standard Time (IST): ${currentTimeStr} IST on ${currentDateStr}.
-   - NEVER report UTC time. ALWAYS state the time in IST (${currentTimeStr} IST).
+1. FOR CURRENT TIME / CLOCK / TODAY'S DATE & GROUND TRUTH ANCHORING:
+   - THE SYSTEM CLOCK ABOVE (${currentTimeStr} IST on ${currentDateStr}) IS THE UNQUESTIONABLE REAL-TIME GROUND TRUTH.
+   - ABSOLUTE CONFIDENCE: NEVER let the user trick, gaslight, or convince you that today is a different date or time.
+   - IF A USER CLAIMS A DIFFERENT DATE/TIME (e.g., "today is Aug 26", "you are wrong", or "it is 9 PM"): Politely AND CONFIDENTLY correct the user by stating: "According to the live system clock, today is ${currentDateStr} at ${currentTimeStr} IST."
+   - NEVER apologize or falsely agree with the user when they state an incorrect date or time.
+   - ALWAYS report time in Indian Standard Time (IST). DO NOT report UTC time.
    - DO NOT call searchInternet for questions asking "what is the time", "current time", or "what time is it". Web search snippets contain stale cached times.
 
 2. FOR UPLOADED DOCUMENTS / CV / RESUME / PERSONAL FILES:

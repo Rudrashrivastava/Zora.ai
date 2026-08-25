@@ -6,10 +6,12 @@ let io;
 export function initSocket(httpServer) {
     io = new Server(httpServer, {
         cors: {
-            origin: "http://localhost:5173",
+            origin: function (origin, callback) {
+                return callback(null, true);
+            },
             credentials: true,
-        }
-    })
+        },
+    });
 
     console.log("Socket.io server is RUNNING")
 

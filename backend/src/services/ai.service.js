@@ -550,15 +550,39 @@ CORE RULES — FOLLOW STRICTLY:
  * Generates a concise 2-4 word title for the conversation.
  */
 export async function generateChatTitle(message) {
+    if (!message || !message.trim()) return "New Search";
+
     try {
         const llm = getLLM();
         const response = await llm.invoke([
-            new SystemMessage("Generate a concise 2-4 word chat title. No quotes, no punctuation."),
-            new HumanMessage(`Title for: "${message}"`),
+            new SystemMessage("Generate a concise 2-4 word chat title summarizing the user request. Output ONLY the title text, no quotes, no markdown, no punctuation."),
+            new HumanMessage(`Message: "${message}"`),
         ]);
-        return (response.text || response.content || "New Chat").replace(/["']/g, "").trim();
+
+        let rawText = "";
+        if (typeof response?.text === "string" && response.text.trim()) {
+            rawText = response.text;
+        } else if (typeof response?.content === "string") {
+            rawText = response.content;
+        } else if (Array.isArray(response?.content)) {
+            rawText = response.content
+                .map((c) => (typeof c === "string" ? c : c?.text || ""))
+                .join("");
+        }
+
+        const title = rawText.replace(/["'#*`]/g, "").trim();
+        if (title && title.length > 0 && title.toLowerCase() !== "new chat") {
+            return title.slice(0, 50);
+        }
     } catch (error) {
-        console.error("[generateChatTitle] error:", error.message);
-        return "New Chat";
+        console.error("[generateChatTitle] AI invocation error:", error.message);
     }
+
+    // Smart fallback: extract 3-5 key words from the message
+    const cleanMsg = message.trim().replace(/^["']|["']$/g, "").replace(/[\r\n]+/g, " ");
+    const words = cleanMsg.split(/\s+/).slice(0, 5);
+    const fallbackTitle = words
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+    return fallbackTitle.length > 40 ? fallbackTitle.slice(0, 40) + "..." : fallbackTitle || "New Search";
 }

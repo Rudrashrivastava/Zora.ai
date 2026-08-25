@@ -78,12 +78,19 @@ export const useChat = () => {
                     throw new Error("Chat ID was not returned by server");
                 }
 
-                // CREATE CHAT IN REDUX
+                // CREATE OR UPDATE CHAT IN REDUX
                 if (!chatId && chat) {
                     dispatch(
                         createNewChat({
                             chatId: chat._id,
-                            title: chat.title || "New Chat",
+                            title: chat.title || data?.title || "New Search",
+                        })
+                    );
+                } else if (chat?.title || data?.title) {
+                    dispatch(
+                        renameChatLocal({
+                            chatId: actualChatId,
+                            title: chat?.title || data?.title,
                         })
                     );
                 }

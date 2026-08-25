@@ -2,12 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import axios from "axios";
-
-const api = axios.create({
-    baseURL: "http://localhost:8000",
-    withCredentials: true,
-});
+import api from "../../../lib/axios";
 
 // ======================================================
 // ZORA LOGO

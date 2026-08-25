@@ -6,6 +6,7 @@ import React, {
     useCallback,
 } from "react";
 import axios from "axios";
+import api from "../../../lib/axios";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -329,6 +330,42 @@ const Dashboard = () => {
     const [showScrollBottom, setShowScrollBottom] = useState(false);
     const [scrollProgress, setScrollProgress] = useState(0);
 
+    const [shareModalState, setShareModalState] = useState({
+        isOpen: false,
+        url: "",
+        title: "",
+        isMessage: false,
+        isCopied: false,
+    });
+
+    const openShareModal = useCallback((rawUrl, title, isMessage) => {
+        let fullUrl = rawUrl || "";
+        if (!fullUrl) {
+            fullUrl = `${window.location.origin}/shared/chat`;
+        } else if (fullUrl.includes("localhost")) {
+            try {
+                const parsed = new URL(fullUrl);
+                fullUrl = `${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+            } catch {
+                fullUrl = `${window.location.origin}${fullUrl.startsWith("/") ? "" : "/"}${fullUrl}`;
+            }
+        } else if (!fullUrl.startsWith("http")) {
+            fullUrl = `${window.location.origin}${fullUrl.startsWith("/") ? "" : "/"}${fullUrl}`;
+        }
+
+        setShareModalState({
+            isOpen: true,
+            url: fullUrl,
+            title: title || "Shared Content",
+            isMessage: !!isMessage,
+            isCopied: false,
+        });
+    }, []);
+
+    const closeShareModal = useCallback(() => {
+        setShareModalState((prev) => ({ ...prev, isOpen: false, isCopied: false }));
+    }, []);
+
     const fileInputRef = useRef(null);
     const messagesEndRef = useRef(null);
     const scrollContainerRef = useRef(null);
@@ -524,7 +561,7 @@ const Dashboard = () => {
 
     const handleLogout = useCallback(async () => {
         try {
-            await axios.post("http://localhost:8000/api/auth/logout", {}, { withCredentials: true });
+            await api.post("/api/auth/logout");
         } catch (error) {
             console.error("Logout error:", error);
         } finally {
@@ -698,7 +735,7 @@ const Dashboard = () => {
                                                     e.stopPropagation();
                                                     setOpenMenuId(openMenuId === chatItem.id ? null : chatItem.id);
                                                 }}
-                                                className="absolute right-1 top-1/2 z-10 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-zinc-500 opacity-0 transition hover:bg-white/10 hover:text-white group-hover:opacity-100"
+                                                className="absolute right-1 top-1/2 z-10 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-zinc-400 opacity-80 transition hover:bg-white/10 hover:text-white group-hover:opacity-100"
                                             >
                                                 <MoreIcon />
                                             </button>
@@ -729,6 +766,21 @@ const Dashboard = () => {
                                                     >
                                                         <PinIcon filled={chatItem.pinned} />
                                                         {chatItem.pinned ? "Unpin" : "Pin"}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            handleShareChat(chatItem.id)
+                                                                .then((d) => {
+                                                                    const url = d?.shareUrl || `${window.location.origin}/shared/chat/${chatItem.id}`;
+                                                                    openShareModal(url, chatItem.title || "Shared Chat", false);
+                                                                })
+                                                                .catch((e) => alert(e.message));
+                                                            setOpenMenuId(null);
+                                                        }}
+                                                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
+                                                    >
+                                                        <ShareIcon /> Share
                                                     </button>
                                                     <div className="my-1 border-t border-white/10" />
                                                     <button
@@ -790,12 +842,35 @@ const Dashboard = () => {
                             <span className="font-semibold text-sm md:hidden">Zora.ai</span>
                         </div>
                         {currentChat && (
-                            <>
+                            <div className="flex items-center gap-1.5 min-w-0">
                                 <span className="text-zinc-700">/</span>
-                                <span className="max-w-[200px] truncate text-xs text-zinc-400 md:max-w-md">
-                                    {currentChat.title || "New Chat"}
+                                <span className="max-w-[160px] truncate text-xs text-zinc-300 md:max-w-md font-medium">
+                                    {currentChat.title || "New Search"}
                                 </span>
-                            </>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setEditingChatId(currentChat.id || currentChat._id);
+                                        setEditingTitle(currentChat.title || "");
+                                    }}
+                                    title="Rename Chat Title"
+                                    className="rounded-md p-1 text-zinc-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                                >
+                                    <EditIcon />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (window.confirm(`Delete "${currentChat.title || "this chat"}"?`)) {
+                                            handleDeleteChat(currentChat.id || currentChat._id);
+                                        }
+                                    }}
+                                    title="Delete Conversation"
+                                    className="rounded-md p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-400 transition cursor-pointer"
+                                >
+                                    <TrashIcon />
+                                </button>
+                            </div>
                         )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -837,6 +912,25 @@ const Dashboard = () => {
                                 </div>
                             )}
                         </div>
+
+                        {currentChatId && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    handleShareChat(currentChatId)
+                                        .then((d) => {
+                                            const url = d?.shareUrl || `${window.location.origin}/shared/chat/${currentChatId}`;
+                                            openShareModal(url, currentChat?.title || "Shared Chat", false);
+                                        })
+                                        .catch((e) => alert(e.message));
+                                }}
+                                className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-white/10 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                                title="Share full conversation"
+                            >
+                                <ShareIcon />
+                                <span className="hidden sm:inline">Share</span>
+                            </button>
+                        )}
 
                         <button
                             type="button"
@@ -1097,8 +1191,7 @@ const Dashboard = () => {
                                                                                 const url =
                                                                                     d?.shareUrl ||
                                                                                     `${window.location.origin}/shared/message/${messageId}`;
-                                                                                copyTextFallback(url);
-                                                                                alert("Share link copied to clipboard!");
+                                                                                openShareModal(url, currentChat?.title || "Shared Response", true);
                                                                             })
                                                                             .catch((e) => alert(e.message))
                                                                     }
@@ -1113,13 +1206,13 @@ const Dashboard = () => {
                                                                     title="Download as Printable PDF"
                                                                     onClick={async () => {
                                                                         try {
-                                                                            const res = await axios.post(
-                                                                                "http://localhost:8000/api/pdf/generate",
+                                                                            const res = await api.post(
+                                                                                "/api/pdf/generate",
                                                                                 {
                                                                                     title: currentChat?.title || "Zora_Notes",
                                                                                     content: message.content,
                                                                                 },
-                                                                                { responseType: "blob", withCredentials: true }
+                                                                                { responseType: "blob" }
                                                                             );
                                                                             const blob = new Blob([res.data], { type: "application/pdf" });
                                                                             const downloadUrl = window.URL.createObjectURL(blob);
@@ -1339,6 +1432,113 @@ const Dashboard = () => {
                                 className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200"
                             >
                                 Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ==================================================
+                SHARE MODAL
+            ================================================== */}
+            {shareModalState.isOpen && (
+                <div
+                    onClick={closeShareModal}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#0f131c] shadow-2xl p-6"
+                    >
+                        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                            <div className="flex items-center gap-2.5">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                                    <ShareIcon />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-white text-base">
+                                        {shareModalState.isMessage ? "Share Message" : "Share Conversation"}
+                                    </h3>
+                                    <p className="text-[11px] text-zinc-400 truncate max-w-[240px]">
+                                        {shareModalState.title}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={closeShareModal}
+                                className="rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white"
+                            >
+                                <CloseIcon />
+                            </button>
+                        </div>
+
+                        <div className="mt-5 space-y-4">
+                            <p className="text-xs text-zinc-400 leading-relaxed">
+                                Anyone with this public link can view this {shareModalState.isMessage ? "shared response" : "conversation"}.
+                            </p>
+
+                            <div className="relative flex items-center rounded-xl border border-white/10 bg-black/40 p-1.5 focus-within:border-cyan-500/50">
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={shareModalState.url}
+                                    className="w-full bg-transparent px-3 py-1.5 text-xs text-cyan-300 font-mono outline-none"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        copyTextFallback(shareModalState.url);
+                                        setShareModalState((prev) => ({ ...prev, isCopied: true }));
+                                        setTimeout(() => {
+                                            setShareModalState((prev) => ({ ...prev, isCopied: false }));
+                                        }, 2000);
+                                    }}
+                                    className={`ml-2 shrink-0 cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                                        shareModalState.isCopied
+                                            ? "bg-emerald-500 text-white"
+                                            : "bg-cyan-500 text-black hover:bg-cyan-400"
+                                    }`}
+                                >
+                                    {shareModalState.isCopied ? "Copied!" : "Copy Link"}
+                                </button>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2">
+                                <a
+                                    href={shareModalState.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-400 hover:underline"
+                                >
+                                    <span>Open link in new tab</span>
+                                    <ExternalLinkIcon />
+                                </a>
+
+                                {typeof navigator !== "undefined" && navigator.share && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            navigator.share({
+                                                title: shareModalState.title,
+                                                url: shareModalState.url,
+                                            }).catch(() => {});
+                                        }}
+                                        className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
+                                    >
+                                        <ShareIcon />
+                                        <span>Share via device</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="mt-6 flex justify-end border-t border-white/10 pt-4">
+                            <button
+                                type="button"
+                                onClick={closeShareModal}
+                                className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20"
+                            >
+                                Close
                             </button>
                         </div>
                     </div>

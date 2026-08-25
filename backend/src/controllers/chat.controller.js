@@ -123,6 +123,22 @@ export async function getChats(req, res) {
                 updatedAt: -1,
             });
 
+        // Auto-repair legacy "New Chat" titles for chats that have user messages
+        for (const chat of chats) {
+            if (!chat.title || chat.title.toLowerCase() === "new chat" || chat.title.toLowerCase() === "new search") {
+                const firstUserMsg = await messageModel
+                    .findOne({ chat: chat._id, role: "user" })
+                    .sort({ createdAt: 1 });
+                if (firstUserMsg && firstUserMsg.content) {
+                    const newTitle = await generateChatTitle(firstUserMsg.content);
+                    if (newTitle && newTitle.toLowerCase() !== "new chat") {
+                        chat.title = newTitle;
+                        await chatModel.findByIdAndUpdate(chat._id, { title: newTitle });
+                    }
+                }
+            }
+        }
+
         res.status(200).json({
             message: "Chats retrieved successfully",
             chats,
@@ -311,12 +327,22 @@ export async function shareChat(req, res) {
             });
         }
 
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-        const shareUrl = `${frontendUrl}/shared/chat/${chat._id}`;
+        const reqOrigin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null);
+        let frontendUrl = reqOrigin;
+        if (!frontendUrl || frontendUrl.includes("localhost")) {
+            if (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes("localhost")) {
+                frontendUrl = process.env.FRONTEND_URL;
+            } else if (!frontendUrl) {
+                frontendUrl = "https://zora-ai-jew7.onrender.com";
+            }
+        }
+        const sharePath = `/shared/chat/${chat._id}`;
+        const shareUrl = `${frontendUrl}${sharePath}`;
 
         res.status(200).json({
             message: "Chat share link created",
             shareUrl,
+            sharePath,
         });
     } catch (error) {
         console.error("Share chat error:", error);
@@ -353,12 +379,22 @@ export async function shareMessage(req, res) {
             });
         }
 
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-        const shareUrl = `${frontendUrl}/shared/message/${message._id}`;
+        const reqOrigin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null);
+        let frontendUrl = reqOrigin;
+        if (!frontendUrl || frontendUrl.includes("localhost")) {
+            if (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes("localhost")) {
+                frontendUrl = process.env.FRONTEND_URL;
+            } else if (!frontendUrl) {
+                frontendUrl = "https://zora-ai-jew7.onrender.com";
+            }
+        }
+        const sharePath = `/shared/message/${message._id}`;
+        const shareUrl = `${frontendUrl}${sharePath}`;
 
         res.status(200).json({
             message: "Message share link created",
             shareUrl,
+            sharePath,
         });
     } catch (error) {
         console.error("Share message error:", error);

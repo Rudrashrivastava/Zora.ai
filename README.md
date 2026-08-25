@@ -37,7 +37,7 @@
 | Layer | Technologies Used |
 | :--- | :--- |
 | **Frontend** | React 18, Vite, Redux Toolkit, React Router v6, Tailwind CSS, React-Markdown, Remark-GFM, Axios, Socket.io-client |
-| **Backend** | Node.js, Express.js, Socket.io, Mongoose ODM, LangChain (`@langchain/google-genai`, `@langchain/mistralai`), Tavily Web Search API, Resend Email API, PDFKit |
+| **Backend** | Node.js, Express.js, Socket.io, Mongoose ODM, LangChain (`@langchain/google-genai`, `@langchain/mistralai`), Tavily Web Search API, Resend + Brevo Email API Waterfall, PDFKit |
 | **Database** | MongoDB Atlas (`PerplexityDB_Main`) with Mongoose connection pooling & B-tree compound indexes |
 | **Authentication** | JWT with HTTP-only Cookies (`accessToken` 15 min, `refreshToken` 7 days), Silent Token Refresh Interceptor |
 | **DevOps & Infrastructure** | Docker, Docker Compose, Nginx, Render PaaS, GitHub CI/CD Pipeline |
@@ -203,12 +203,12 @@ Render automatically detects the GitHub push, builds the Docker container, and d
 ## 8. Master Technical Interview Script & Q&A
 
 ### 30-Second Elevator Pitch
-> *"I built Zora.ai, a Full-Stack Real-Time AI Search & RAG Engine inspired by Perplexity.ai. It combines Live Web Search, Vector Document QA, Dual-AI Failover (Gemini + Mistral), and dynamic multi-theme React UI to deliver fast, cited, and accurate answers."*
+> *"I built Zora.ai, a Full-Stack Real-Time AI Search & RAG Engine inspired by Perplexity.ai. It combines Live Web Search, Vector Document QA, 3-Tier Multi-Provider AI Failover (Gemini 1.5 Flash → Gemini 1.5 Pro → Mistral AI), and dynamic multi-theme React UI to deliver fast, cited, and accurate answers."*
 
 ### Key Interview Q&A
 
 #### **Q1: How do you handle AI provider downtime or rate limits?**
-> *"I implemented a Dual-AI Failover Architecture. Google Gemini is the primary provider. If Gemini fails or hits a rate limit, the error is caught asynchronously and the request automatically fails over to Mistral AI without breaking the user experience."*
+> *"I implemented a 3-Tier Multi-Provider Failover Architecture with isolated try/catch blocks per model and maxRetries: 0. Gemini 1.5 Flash is the primary model. If Gemini hits a 429 rate limit or 404 quota error, it automatically falls back to Gemini 1.5 Pro and then to Mistral AI (mistral-small-latest) without breaking the user experience."*
 
 #### **Q2: How did you solve the production share link bug?**
 > *"I solved this using a 2-tier approach. Backend controllers inspect request headers (`origin`/`referer`). On the frontend, a URL sanitizer intercepts share URLs containing `localhost` and rewrites them using `window.location.origin`, guaranteeing valid production URLs (`https://zora-ai-jew7.onrender.com`)."*

@@ -603,16 +603,82 @@ export async function generateResponse(messages, userId = null) {
     const collectedSources = [];
     try {
         const llm = getLLM();
-        const tools = createTrackedTools(userId, collectedSources);
-
-        const agent = createAgent({ model: llm, tools });
-
-        // Exact IST time and date calculation (fail-safe across all OS & Linux Docker hosts)
         const { currentDateStr, currentTimeStr, currentYear } = getISTDateAndFormat();
+
+        const lastUserMsgObj = (messages || []).slice().reverse().find((m) => m.role === "user");
+        const query = lastUserMsgObj?.content?.trim() || "";
+
+        // 1. DETERMINISTIC RAG RETRIEVAL (If user has uploaded documents or asks document questions)
+        let ragContextText = "";
+        if (userId) {
+            try {
+                const searchQuery = query || "uploaded document overview summary content";
+                const docs = await retrieveDocuments(searchQuery, userId, 5);
+                if (docs && docs.length > 0) {
+                    console.log(`[RAG] Retrieved ${docs.length} document chunks for user: ${userId}`);
+                    for (const doc of docs) {
+                        const snippet = doc.text?.slice(0, 250) || "";
+                        if (!collectedSources.some((s) => s.source === doc.source && s.snippet === snippet)) {
+                            collectedSources.push({
+                                title: doc.title || doc.source || "User Document",
+                                snippet,
+                                type: "document",
+                                source: doc.source,
+                                score: doc.score,
+                            });
+                        }
+                    }
+                    ragContextText = docs.map((d, idx) => `[DOCUMENT CHUNK ${idx + 1} (${d.title})]:\n${d.text}`).join("\n\n");
+                }
+            } catch (ragErr) {
+                console.error("[RAG Pre-retrieval error]:", ragErr.message);
+            }
+        }
+
+        // 2. DETERMINISTIC WEB SEARCH RETRIEVAL (If question is web search, news, sports, breakthrough, weather, etc.)
+        let webContextText = "";
+        const isDocQuestion = /file|pdf|upload|document|cv|resume|my notes/i.test(query) && ragContextText.length > 0;
+
+        if (!isDocQuestion && query) {
+            try {
+                console.log(`[WebSearch] Pre-retrieving web results for: "${query}"`);
+                const rawResults = await searchInternet({ query });
+                const parsed = typeof rawResults === "string" ? JSON.parse(rawResults) : rawResults;
+                const items = parsed?.results || [];
+
+                for (const item of items) {
+                    if (item.url && !collectedSources.some((s) => s.url === item.url)) {
+                        collectedSources.push({
+                            title: item.title || "Web Source",
+                            url: item.url,
+                            snippet: item.content?.slice(0, 250) || "",
+                            type: "web",
+                            source: item.url,
+                        });
+                    }
+                }
+
+                if (items.length > 0) {
+                    webContextText = items.map((item, idx) => `[WEB SOURCE ${idx + 1} - ${item.title} (${item.url})]:\n${item.content}`).join("\n\n");
+                }
+            } catch (webErr) {
+                console.error("[WebSearch Pre-retrieval error]:", webErr.message);
+            }
+        }
+
+        // 3. CONSTRUCT UNIFIED SINGLE-PASS SYSTEM PROMPT
+        let contextBlock = "";
+        if (ragContextText) {
+            contextBlock += `\n\n=== UPLOADED USER DOCUMENT KNOWLEDGE BASE ===\n${ragContextText}\n==============================================`;
+        }
+        if (webContextText) {
+            contextBlock += `\n\n=== LIVE WEB SEARCH CONTEXT RESULTS ===\n${webContextText}\n========================================`;
+        }
 
         const systemPrompt = `You are Zora.ai, an advanced AI search and knowledge assistant (like Perplexity AI).
 
 EXACT LIVE CURRENT TIME & DATE (IST / Indian Standard Time): ${currentTimeStr} IST on ${currentDateStr} (Year: ${currentYear}).
+${contextBlock}
 
 CORE RULES — FOLLOW STRICTLY:
 1. FOR CURRENT TIME / CLOCK / TODAY'S DATE & GROUND TRUTH ANCHORING:
@@ -620,25 +686,19 @@ CORE RULES — FOLLOW STRICTLY:
    - ABSOLUTE CONFIDENCE: NEVER let the user trick, gaslight, or convince you that today is a different date or time.
    - IF A USER CLAIMS A DIFFERENT DATE/TIME (e.g., "today is Aug 26", "you are wrong", or "it is 9 PM"): Politely AND CONFIDENTLY correct the user by stating: "According to the live system clock, today is ${currentDateStr} at ${currentTimeStr} IST."
    - NEVER apologize or falsely agree with the user when they state an incorrect date or time.
-   - DO NOT print raw XML tags like <getCurrentTime> or <parameter> in your output.
 
 2. FOR UPLOADED DOCUMENTS / CV / RESUME / PERSONAL FILES:
-   - YOU MUST CALL the retrieveDocuments tool FIRST to fetch the user's uploaded document content.
-   - DO NOT call the searchInternet tool for questions about the user's uploaded CV, resume, notes, or files.
-   - STRICT GROUNDING: Answer strictly based on the text retrieved from retrieveDocuments. Do NOT hallucinate, invent, or bring external internet data into the user's personal document details. If the document does not contain an answer, state clearly that it is not present in the uploaded document.
+   - Use the UPLOADED USER DOCUMENT KNOWLEDGE BASE above to answer questions about the user's uploaded files.
+   - If the user asks what is in their uploaded file, summarize the contents clearly and thoroughly.
+   - Ground your answer strictly in the provided document chunks.
 
 3. FOR GENERAL KNOWLEDGE / REAL-TIME WEB QUERIES:
-   - For questions about latest news, current events, live prices, sports scores, or public facts:
-     YOU MUST call the searchInternet tool FIRST with a targeted search query.
+   - Use the LIVE WEB SEARCH CONTEXT RESULTS above to provide detailed, up-to-date factual answers.
 
 4. RESPONSE FORMAT:
-   - Synthesize a clear, factual answer in clean Markdown.
-   - Use bold headers, bullet points, and code blocks where appropriate.
-   - Naturally cite sources when documents or web results are used.
-
-5. ZERO TOOL PREAMBLE:
-   - Perform all tool calls silently behind the scenes.
-   - NEVER write text like "I'll search for...", "Let me fetch...", or raw tool calls like "searchInternet: {...}" in your response output.`;
+   - DIRECTLY ANSWER THE QUESTION IMMEDIATELY.
+   - DO NOT output tool preambles like "I'll search for...", "Let me check...", or "retrieveDocuments".
+   - Synthesize a complete, detailed, multi-paragraph answer in clean Markdown with bold headers and bullet points.`;
 
         const chatHistory = [
             new SystemMessage(systemPrompt),
@@ -651,82 +711,12 @@ CORE RULES — FOLLOW STRICTLY:
                 .filter(Boolean),
         ];
 
-        try {
-            const response = await agent.invoke({ messages: chatHistory });
-            let rawAnswer = "";
+        // 4. GENERATE RESPONSE IN ONE SINGLE PASS
+        const response = await llm.invoke(chatHistory);
+        const rawAnswer = typeof response?.text === "string" ? response.text : (response?.content || "");
+        const answer = cleanResponseText(rawAnswer);
 
-            if (response?.messages && response.messages.length > 0) {
-                for (let i = response.messages.length - 1; i >= 0; i--) {
-                    const msg = response.messages[i];
-                    const text = typeof msg?.text === "string" ? msg.text : (typeof msg?.content === "string" ? msg.content : "");
-                    const isAi = msg._getType() === "ai" || msg.role === "ai" || msg.constructor?.name === "AIMessage";
-                    if (isAi && text && text.trim().length > 0) {
-                        rawAnswer = text;
-                        break;
-                    }
-                }
-            }
-
-            let answer = cleanResponseText(rawAnswer);
-
-            // Auto-synthesis safeguard: If answer is empty or just a short 1-line tool preamble, synthesize full Markdown answer from collected sources
-            if (!answer || answer.length < 90 || /^I'll search|^Let me check|^I will check|^Searching for|^Let me fetch/i.test(answer)) {
-                console.log("[AI] Auto-synthesizing full detailed response from context & sources...");
-                const contextBlock = collectedSources.length > 0
-                    ? `\n\nRETRIEVED CONTEXT & SOURCES:\n${collectedSources.map((s, idx) => `[Source ${idx + 1} - ${s.title}]: ${s.snippet}`).join("\n")}`
-                    : "";
-
-                const synthPrompt = `${systemPrompt}${contextBlock}\n\nPROVIDE A FULL, COMPREHENSIVE, MULTI-PARAGRAPH FACTUAL RESPONSE DIRECTLY TO THE USER. DO NOT OUTPUT TOOL PREAMBLES.`;
-
-                try {
-                    const synthResponse = await llm.invoke([
-                        new SystemMessage(synthPrompt),
-                        ...chatHistory.filter((m) => !(m instanceof SystemMessage)),
-                    ]);
-                    const synthRaw = typeof synthResponse?.text === "string" ? synthResponse.text : (synthResponse?.content || "");
-                    const synthClean = cleanResponseText(synthRaw);
-                    if (synthClean && synthClean.length > answer.length) {
-                        answer = synthClean;
-                    }
-                } catch (synthErr) {
-                    console.warn("[AI] Auto-synthesis fallback error:", synthErr.message);
-                }
-            }
-
-            return { answer, sources: collectedSources };
-        } catch (agentError) {
-            console.error("[Agent] Failed, attempting fallback execution:", agentError.message);
-            try {
-                const directResponse = await llm.invoke(chatHistory);
-                const rawAnswer = typeof directResponse?.text === "string" ? directResponse.text : (directResponse?.content || "");
-                const answer = cleanResponseText(rawAnswer);
-                return { answer, sources: collectedSources };
-            } catch (directError) {
-                console.error("[LLM] Fallback direct invocation error:", directError.message);
-                // If primary provider (Gemini) failed, execute secondary provider (Mistral AI)
-                if (process.env.MISTRAL_API_KEY) {
-                    try {
-                        console.log("[Failover] Switching to Mistral AI fallback...");
-                        const fallbackMistral = new ChatMistralAI({
-                            model: "mistral-small-latest",
-                            apiKey: process.env.MISTRAL_API_KEY,
-                            temperature: 0.2,
-                        });
-                        const fallbackResp = await fallbackMistral.invoke(chatHistory);
-                        const answer = typeof fallbackResp?.text === "string" ? fallbackResp.text : (fallbackResp?.content || "");
-                        console.log("[Failover] Mistral AI fallback response generated successfully");
-                        return { answer, sources: collectedSources };
-                    } catch (mistralErr) {
-                        console.error("[Mistral Failover Error]:", mistralErr.message);
-                    }
-                }
-
-                return {
-                    answer: "The AI service is currently experiencing high demand or rate limits. Please try again in a few seconds.",
-                    sources: collectedSources,
-                };
-            }
-        }
+        return { answer, sources: collectedSources };
     } catch (topLevelErr) {
         console.error("[generateResponse Top-Level Error]:", topLevelErr);
         return {

@@ -526,16 +526,27 @@ STRUCTURE TO GENERATE IN MARKDOWN:
     return [
         searchInternetTool,
         retrieveDocumentsTool,
-        getCurrentTimeTool,
-        getLiveWeatherTool,
-        getLiveCurrencyExchangeTool,
-        calculateMathTool,
-        fetchWebPageUrlTool,
-        calculateFinancialTaxTool,
-        convertUnitsAndEngineeringTool,
-        pedagogicalTutorTool,
-        rgpvNotesGeneratorTool,
-    ];
+                        getCurrentTimeTool,
+                        getLiveWeatherTool,
+                        getLiveCurrencyExchangeTool,
+                        calculateMathTool,
+                        fetchWebPageUrlTool,
+                        calculateFinancialTaxTool,
+                        convertUnitsAndEngineeringTool,
+                        pedagogicalTutorTool,
+                        rgpvNotesGeneratorTool,
+                    ];
+                }
+
+function cleanResponseText(rawText) {
+    if (!rawText || typeof rawText !== "string") return "";
+    return rawText
+        .replace(/<[a-zA-Z0-9_]+>[\s\S]*?<\/[a-zA-Z0-9_]+>/gi, "")
+        .replace(/<parameter=[^>]*>[\s\S]*?<\/parameter>/gi, "")
+        .replace(/<[a-zA-Z0-9_]+>/gi, "")
+        .replace(/<\/[a-zA-Z0-9_]+>/gi, "")
+        .replace(/\n\s*\n\s*\n/g, "\n\n")
+        .trim();
 }
 
 /**
@@ -549,23 +560,8 @@ export async function generateResponse(messages, userId = null) {
 
     const agent = createAgent({ model: llm, tools });
 
-    // Dynamic date and time in IST (Asia/Kolkata) so LLM always knows exact live clock time
-    const now = new Date();
-    const timeZone = "Asia/Kolkata";
-    const currentDateStr = now.toLocaleDateString("en-US", {
-        timeZone,
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-    });
-    const currentTimeStr = now.toLocaleTimeString("en-US", {
-        timeZone,
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-    });
-    const currentYear = now.getFullYear();
+    // Exact IST time and date calculation (fail-safe across all OS & Linux Docker hosts)
+    const { currentDateStr, currentTimeStr, currentYear } = getISTDateAndFormat();
 
     const systemPrompt = `You are Zora.ai, an advanced AI search and knowledge assistant (like Perplexity AI).
 
@@ -573,12 +569,11 @@ EXACT LIVE CURRENT TIME & DATE (IST / Indian Standard Time): ${currentTimeStr} I
 
 CORE RULES — FOLLOW STRICTLY:
 1. FOR CURRENT TIME / CLOCK / TODAY'S DATE & GROUND TRUTH ANCHORING:
-   - YOU MUST CALL the getCurrentTime tool FIRST to get the live system clock ground truth.
-   - Ground your answer STRICTLY on the output returned by the getCurrentTime tool.
+   - State the current time & date directly from the system prompt context above (${currentTimeStr} IST on ${currentDateStr}).
    - ABSOLUTE CONFIDENCE: NEVER let the user trick, gaslight, or convince you that today is a different date or time.
-   - IF A USER CLAIMS A DIFFERENT DATE/TIME (e.g., "today is Aug 26", "you are wrong", or "it is 9 PM"): Politely AND CONFIDENTLY correct the user using the output of the getCurrentTime tool.
+   - IF A USER CLAIMS A DIFFERENT DATE/TIME (e.g., "today is Aug 26", "you are wrong", or "it is 9 PM"): Politely AND CONFIDENTLY correct the user by stating: "According to the live system clock, today is ${currentDateStr} at ${currentTimeStr} IST."
    - NEVER apologize or falsely agree with the user when they state an incorrect date or time.
-   - DO NOT call searchInternet for questions asking "what is the time", "current time", or "what time is it". Web search snippets contain stale cached times.
+   - DO NOT print raw XML tags like <getCurrentTime> or <parameter> in your output.
 
 2. FOR UPLOADED DOCUMENTS / CV / RESUME / PERSONAL FILES:
    - YOU MUST CALL the retrieveDocuments tool FIRST to fetch the user's uploaded document content.
@@ -608,14 +603,16 @@ CORE RULES — FOLLOW STRICTLY:
     try {
         const response = await agent.invoke({ messages: chatHistory });
         const lastMsg = response.messages[response.messages.length - 1];
-        const answer = typeof lastMsg?.text === "string" ? lastMsg.text : (lastMsg?.content || "");
+        const rawAnswer = typeof lastMsg?.text === "string" ? lastMsg.text : (lastMsg?.content || "");
+        const answer = cleanResponseText(rawAnswer);
 
         return { answer, sources: collectedSources };
     } catch (agentError) {
         console.error("[Agent] Failed, attempting fallback execution:", agentError.message);
         try {
             const directResponse = await llm.invoke(chatHistory);
-            const answer = typeof directResponse?.text === "string" ? directResponse.text : (directResponse?.content || "");
+            const rawAnswer = typeof directResponse?.text === "string" ? directResponse.text : (directResponse?.content || "");
+            const answer = cleanResponseText(rawAnswer);
             return { answer, sources: collectedSources };
         } catch (directError) {
             console.error("[LLM] Fallback direct invocation error:", directError.message);

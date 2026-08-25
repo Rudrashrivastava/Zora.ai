@@ -667,7 +667,31 @@ CORE RULES — FOLLOW STRICTLY:
                 }
             }
 
-            const answer = cleanResponseText(rawAnswer);
+            let answer = cleanResponseText(rawAnswer);
+
+            // Auto-synthesis safeguard: If answer is empty or just a short 1-line tool preamble, synthesize full Markdown answer from collected sources
+            if (!answer || answer.length < 90 || /^I'll search|^Let me check|^I will check|^Searching for|^Let me fetch/i.test(answer)) {
+                console.log("[AI] Auto-synthesizing full detailed response from context & sources...");
+                const contextBlock = collectedSources.length > 0
+                    ? `\n\nRETRIEVED CONTEXT & SOURCES:\n${collectedSources.map((s, idx) => `[Source ${idx + 1} - ${s.title}]: ${s.snippet}`).join("\n")}`
+                    : "";
+
+                const synthPrompt = `${systemPrompt}${contextBlock}\n\nPROVIDE A FULL, COMPREHENSIVE, MULTI-PARAGRAPH FACTUAL RESPONSE DIRECTLY TO THE USER. DO NOT OUTPUT TOOL PREAMBLES.`;
+
+                try {
+                    const synthResponse = await llm.invoke([
+                        new SystemMessage(synthPrompt),
+                        ...chatHistory.filter((m) => !(m instanceof SystemMessage)),
+                    ]);
+                    const synthRaw = typeof synthResponse?.text === "string" ? synthResponse.text : (synthResponse?.content || "");
+                    const synthClean = cleanResponseText(synthRaw);
+                    if (synthClean && synthClean.length > answer.length) {
+                        answer = synthClean;
+                    }
+                } catch (synthErr) {
+                    console.warn("[AI] Auto-synthesis fallback error:", synthErr.message);
+                }
+            }
 
             return { answer, sources: collectedSources };
         } catch (agentError) {

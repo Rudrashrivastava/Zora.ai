@@ -103,8 +103,10 @@ export async function register(req, res) {
             { expiresIn: "24h" }
         );
 
-        const requestOrigin = req.headers.origin || `${req.protocol}://${req.get("host")}`;
-        const frontendUrl = requestOrigin || process.env.FRONTEND_URL;
+        let frontendUrl = req.headers.origin || `${req.protocol}://${req.get("host")}`;
+        if (process.env.FRONTEND_URL && (!frontendUrl || frontendUrl.includes("localhost") || frontendUrl.includes("127.0.0.1"))) {
+            frontendUrl = process.env.FRONTEND_URL;
+        }
         const verificationUrl = `${frontendUrl}/verify-email?token=${emailVerificationToken}`;
 
         try {

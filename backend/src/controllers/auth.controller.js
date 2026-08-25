@@ -104,7 +104,7 @@ export async function register(req, res) {
         );
 
         const requestOrigin = req.headers.origin || `${req.protocol}://${req.get("host")}`;
-        const frontendUrl = process.env.FRONTEND_URL || requestOrigin;
+        const frontendUrl = requestOrigin || process.env.FRONTEND_URL;
         const verificationUrl = `${frontendUrl}/verify-email?token=${emailVerificationToken}`;
 
         try {

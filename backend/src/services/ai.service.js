@@ -14,14 +14,15 @@ function getLLM() {
         try {
             const key = process.env.GEMINI_API_KEY.trim();
             const isOAuth = key.startsWith("AQ.");
+            const modelName = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
             _llm = new ChatGoogleGenerativeAI({
-                model: "gemini-1.5-flash-latest",
+                model: modelName,
                 apiKey: isOAuth ? undefined : key,
                 ...(isOAuth ? { customHeaders: { Authorization: `Bearer ${key}` } } : {}),
                 temperature: 0.2,
             });
-            console.log(`[AI] Using Gemini AI (gemini-1.5-flash-latest) [Mode: ${isOAuth ? "OAuth Bearer" : "Standard Key"}]`);
+            console.log(`[AI] Using Gemini AI (${modelName}) [Mode: ${isOAuth ? "OAuth Bearer" : "Standard Key"}]`);
             return _llm;
         } catch (err) {
             console.warn("[AI] Gemini init failed, trying Mistral:", err.message);
@@ -561,16 +562,17 @@ function cleanResponseText(rawText) {
  * Returns { answer, sources }
  */
 export async function generateResponse(messages, userId = null) {
-    const llm = getLLM();
     const collectedSources = [];
-    const tools = createTrackedTools(userId, collectedSources);
+    try {
+        const llm = getLLM();
+        const tools = createTrackedTools(userId, collectedSources);
 
-    const agent = createAgent({ model: llm, tools });
+        const agent = createAgent({ model: llm, tools });
 
-    // Exact IST time and date calculation (fail-safe across all OS & Linux Docker hosts)
-    const { currentDateStr, currentTimeStr, currentYear } = getISTDateAndFormat();
+        // Exact IST time and date calculation (fail-safe across all OS & Linux Docker hosts)
+        const { currentDateStr, currentTimeStr, currentYear } = getISTDateAndFormat();
 
-    const systemPrompt = `You are Zora.ai, an advanced AI search and knowledge assistant (like Perplexity AI).
+        const systemPrompt = `You are Zora.ai, an advanced AI search and knowledge assistant (like Perplexity AI).
 
 EXACT LIVE CURRENT TIME & DATE (IST / Indian Standard Time): ${currentTimeStr} IST on ${currentDateStr} (Year: ${currentYear}).
 
@@ -596,56 +598,63 @@ CORE RULES — FOLLOW STRICTLY:
    - Use bold headers, bullet points, and code blocks where appropriate.
    - Naturally cite sources when documents or web results are used.`;
 
-    const chatHistory = [
-        new SystemMessage(systemPrompt),
-        ...messages
-            .map((msg) => {
-                if (msg.role === "user") return new HumanMessage(msg.content);
-                if (msg.role === "ai") return new AIMessage(msg.content);
-                return null;
-            })
-            .filter(Boolean),
-    ];
+        const chatHistory = [
+            new SystemMessage(systemPrompt),
+            ...(messages || [])
+                .map((msg) => {
+                    if (msg.role === "user") return new HumanMessage(msg.content);
+                    if (msg.role === "ai") return new AIMessage(msg.content);
+                    return null;
+                })
+                .filter(Boolean),
+        ];
 
-    try {
-        const response = await agent.invoke({ messages: chatHistory });
-        const lastMsg = response.messages[response.messages.length - 1];
-        const rawAnswer = typeof lastMsg?.text === "string" ? lastMsg.text : (lastMsg?.content || "");
-        const answer = cleanResponseText(rawAnswer);
-
-        return { answer, sources: collectedSources };
-    } catch (agentError) {
-        console.error("[Agent] Failed, attempting fallback execution:", agentError.message);
         try {
-            const directResponse = await llm.invoke(chatHistory);
-            const rawAnswer = typeof directResponse?.text === "string" ? directResponse.text : (directResponse?.content || "");
+            const response = await agent.invoke({ messages: chatHistory });
+            const lastMsg = response.messages[response.messages.length - 1];
+            const rawAnswer = typeof lastMsg?.text === "string" ? lastMsg.text : (lastMsg?.content || "");
             const answer = cleanResponseText(rawAnswer);
-            return { answer, sources: collectedSources };
-        } catch (directError) {
-            console.error("[LLM] Fallback direct invocation error:", directError.message);
-            // If primary provider (Gemini) failed, execute secondary provider (Mistral AI)
-            if (process.env.MISTRAL_API_KEY) {
-                try {
-                    console.log("[Failover] Switching to Mistral AI fallback...");
-                    const fallbackMistral = new ChatMistralAI({
-                        model: "mistral-small-latest",
-                        apiKey: process.env.MISTRAL_API_KEY,
-                        temperature: 0.2,
-                    });
-                    const fallbackResp = await fallbackMistral.invoke(chatHistory);
-                    const answer = typeof fallbackResp?.text === "string" ? fallbackResp.text : (fallbackResp?.content || "");
-                    console.log("[Failover] Mistral AI fallback response generated successfully");
-                    return { answer, sources: collectedSources };
-                } catch (mistralErr) {
-                    console.error("[Mistral Failover Error]:", mistralErr.message);
-                }
-            }
 
-            return {
-                answer: "The AI service is currently experiencing high demand or rate limits. Please try again in a few seconds.",
-                sources: collectedSources,
-            };
+            return { answer, sources: collectedSources };
+        } catch (agentError) {
+            console.error("[Agent] Failed, attempting fallback execution:", agentError.message);
+            try {
+                const directResponse = await llm.invoke(chatHistory);
+                const rawAnswer = typeof directResponse?.text === "string" ? directResponse.text : (directResponse?.content || "");
+                const answer = cleanResponseText(rawAnswer);
+                return { answer, sources: collectedSources };
+            } catch (directError) {
+                console.error("[LLM] Fallback direct invocation error:", directError.message);
+                // If primary provider (Gemini) failed, execute secondary provider (Mistral AI)
+                if (process.env.MISTRAL_API_KEY) {
+                    try {
+                        console.log("[Failover] Switching to Mistral AI fallback...");
+                        const fallbackMistral = new ChatMistralAI({
+                            model: "mistral-small-latest",
+                            apiKey: process.env.MISTRAL_API_KEY,
+                            temperature: 0.2,
+                        });
+                        const fallbackResp = await fallbackMistral.invoke(chatHistory);
+                        const answer = typeof fallbackResp?.text === "string" ? fallbackResp.text : (fallbackResp?.content || "");
+                        console.log("[Failover] Mistral AI fallback response generated successfully");
+                        return { answer, sources: collectedSources };
+                    } catch (mistralErr) {
+                        console.error("[Mistral Failover Error]:", mistralErr.message);
+                    }
+                }
+
+                return {
+                    answer: "The AI service is currently experiencing high demand or rate limits. Please try again in a few seconds.",
+                    sources: collectedSources,
+                };
+            }
         }
+    } catch (topLevelErr) {
+        console.error("[generateResponse Top-Level Error]:", topLevelErr);
+        return {
+            answer: "The AI service is currently processing your request. Please try again in a moment.",
+            sources: [],
+        };
     }
 }
 

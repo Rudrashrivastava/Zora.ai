@@ -14,7 +14,7 @@ function getLLM() {
         try {
             const key = process.env.GEMINI_API_KEY.trim();
             const isOAuth = key.startsWith("AQ.");
-            const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+            const modelName = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
             _llm = new ChatGoogleGenerativeAI({
                 model: modelName,

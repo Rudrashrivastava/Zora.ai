@@ -47,15 +47,7 @@ api.interceptors.response.use(
         const originalRequest = error.config;
 
         // Only intercept 401 errors (unauthorized)
-        if (error.response?.status !== 401) {
-            return Promise.reject(error);
-        }
-
-        const errorCode = error.response?.data?.code;
-
-        // If token is missing (NO_TOKEN) or invalid (INVALID_TOKEN), force logout & redirect immediately
-        if (errorCode !== "TOKEN_EXPIRED") {
-            window.dispatchEvent(new CustomEvent("auth:logout-required"));
+        if (!error.response || error.response.status !== 401) {
             return Promise.reject(error);
         }
 
@@ -91,7 +83,6 @@ api.interceptors.response.use(
             processQueue(refreshError);
 
             // Refresh token is invalid/expired → force logout
-            // Dispatch a custom event so the app can redirect to /login
             window.dispatchEvent(new CustomEvent("auth:logout-required"));
 
             return Promise.reject(refreshError);

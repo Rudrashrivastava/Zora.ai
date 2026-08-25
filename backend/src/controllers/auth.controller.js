@@ -104,9 +104,7 @@ export async function register(req, res) {
         );
 
         const requestOrigin = req.headers.origin || `${req.protocol}://${req.get("host")}`;
-        const frontendUrl = (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes("localhost"))
-            ? process.env.FRONTEND_URL
-            : requestOrigin;
+        const frontendUrl = process.env.FRONTEND_URL || requestOrigin;
         const verificationUrl = `${frontendUrl}/verify-email?token=${emailVerificationToken}`;
 
         try {
@@ -125,9 +123,9 @@ body { margin: 0; padding: 0; background: #f9fafb; font-family: -apple-system, B
 .wrapper { width: 100%; background: #f9fafb; padding: 40px 20px; }
 .container { max-width: 520px; margin: 0 auto; }
 .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 40px; text-align: center; }
-h1 { color: #111827; font-size: 24px; margin: 0 0 20px; }
+h1 { color: #0a1631ff; font-size: 24px; margin: 0 0 20px; }
 p { color: #4b5563; font-size: 15px; line-height: 24px; margin: 0 0 20px; }
-.button { display: inline-block; background: #111827; color: #fff !important; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; margin: 20px 0; }
+.button { display: inline-block; background: #0a1631ff; color: #fff !important; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; margin: 20px 0; }
 .footer { text-align: center; padding-top: 24px; }
 .footer p { font-size: 13px; color: #6b7280; }
 </style>

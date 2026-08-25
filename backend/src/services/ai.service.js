@@ -539,7 +539,7 @@ STRUCTURE TO GENERATE IN MARKDOWN:
                     ];
                 }
 
-function cleanResponseText(rawText) {
+export function cleanResponseText(rawText) {
     if (!rawText || typeof rawText !== "string") return "";
     return rawText
         // Remove special Gemini tool section blocks: <|tool_calls_section_begin|> ... <|tool_calls_section_end|>

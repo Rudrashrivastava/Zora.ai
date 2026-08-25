@@ -151,10 +151,26 @@ p { color: #4b5563; font-size: 15px; line-height: 24px; margin: 0 0 20px; }
             });
         } catch (emailError) {
             console.error("[Register] Email send failed:", emailError.message);
+
+            const isDev = process.env.NODE_ENV === "development" || !process.env.NODE_ENV;
+            if (isDev) {
+                console.warn("[Register] Dev Mode: Email dispatch failed. Auto-verifying user for local testing.");
+                console.warn("[Register] Verification Link:", verificationUrl);
+                user.verified = true;
+                await user.save();
+
+                return res.status(201).json({
+                    success: true,
+                    message: "Registration successful (Dev Mode: Email delivery failed, account auto-verified).",
+                    verificationUrl,
+                    user: { id: user._id, username: user.username, email: user.email },
+                });
+            }
+
             await userModel.findByIdAndDelete(user._id);
             return res.status(500).json({
                 success: false,
-                message: "Unable to send verification email to this address. Please try again with a valid email.",
+                message: "Unable to send verification email. If using Resend, please verify your custom domain at resend.com/domains or check SMTP credentials.",
             });
         }
 

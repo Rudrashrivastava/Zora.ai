@@ -3,15 +3,20 @@ import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import { sendEmail } from "../services/mail.service.js";
 
-// =====================================================
-// TOKEN HELPERS
-// =====================================================
+
+
+
+
 
 const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
 const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + "_refresh";
 const ACCESS_TOKEN_EXPIRY = "15m";
 const REFRESH_TOKEN_EXPIRY = "7d";
 const REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+
+
+
+
 
 function generateAccessToken(user) {
     return jwt.sign(
@@ -24,6 +29,10 @@ function generateAccessToken(user) {
         { expiresIn: ACCESS_TOKEN_EXPIRY }
     );
 }
+
+
+
+
 
 function generateRefreshToken(user, existingFamilyId = null) {
     const familyId = existingFamilyId || crypto.randomUUID();
@@ -38,9 +47,17 @@ function generateRefreshToken(user, existingFamilyId = null) {
     return { token, familyId };
 }
 
+
+
+
+
 function hashToken(rawToken) {
     return crypto.createHash("sha256").update(rawToken).digest("hex");
 }
+
+
+
+
 
 function setAuthCookies(res, accessToken, refreshToken) {
     const isProd = process.env.NODE_ENV === "production";
@@ -63,6 +80,10 @@ function setAuthCookies(res, accessToken, refreshToken) {
     });
 }
 
+
+
+
+
 function clearAuthCookies(res) {
     const isProd = process.env.NODE_ENV === "production";
     const opts = {
@@ -75,10 +96,13 @@ function clearAuthCookies(res) {
     res.clearCookie("refreshToken", { ...opts, path: "/api/auth" });
 }
 
+
 // =====================================================
 // REGISTER
 // POST /api/auth/register — Public
 // =====================================================
+
+
 export async function register(req, res) {
     try {
         const { username, email, password } = req.body;
@@ -92,8 +116,11 @@ export async function register(req, res) {
                     : "Username is already taken";
             return res.status(400).json({ success: false, message });
         }
+        
 
-        // Create user
+
+
+       // Create user
         const user = await userModel.create({ username, email, password });
 
         // Email verification token (JWT, 24 hours)
@@ -114,42 +141,43 @@ export async function register(req, res) {
                 to: email,
                 subject: "Verify your Zora.ai account",
                 html: `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Verify your email</title>
-<style>
-body { margin: 0; padding: 0; background: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #374151; }
-.wrapper { width: 100%; background: #f9fafb; padding: 40px 20px; }
-.container { max-width: 520px; margin: 0 auto; }
-.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 40px; text-align: center; }
-h1 { color: #0a1631ff; font-size: 24px; margin: 0 0 20px; }
-p { color: #4b5563; font-size: 15px; line-height: 24px; margin: 0 0 20px; }
-.button { display: inline-block; background: #0a1631ff; color: #fff !important; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; margin: 20px 0; }
-.footer { text-align: center; padding-top: 24px; }
-.footer p { font-size: 13px; color: #6b7280; }
-</style>
-</head>
-<body>
-<div class="wrapper">
-<div class="container">
-<div class="card">
-<h1>Verify your email</h1>
-<p>Hi <strong>${username}</strong>,</p>
-<p>Welcome to Zora.ai. Click the button below to verify your email and complete registration.</p>
-<a href="${verificationUrl}" class="button" target="_blank">Verify Email Address</a>
-<p>This link expires in <strong>15 minutes</strong>. If you didn't create this account, ignore this email.</p>
-<p>Thanks,<br><strong>The Zora.ai Team</strong></p>
-</div>
-<div class="footer"><p>© 2026 Zora.ai. All rights reserved.</p></div>
-</div>
-</div>
-</body>
-</html>`,
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Verify your email</title>
+                <style>
+                body { margin: 0; padding: 0; background: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #374151; }
+                .wrapper { width: 100%; background: #f9fafb; padding: 40px 20px; }
+                .container { max-width: 520px; margin: 0 auto; }
+                .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 40px; text-align: center; }
+                h1 { color: #0a1631ff; font-size: 24px; margin: 0 0 20px; }
+                p { color: #4b5563; font-size: 15px; line-height: 24px; margin: 0 0 20px; }
+                .button { display: inline-block; background: #0a1631ff; color: #fff !important; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; margin: 20px 0; }
+                .footer { text-align: center; padding-top: 24px; }
+                .footer p { font-size: 13px; color: #6b7280; }
+                </style>
+                </head>
+                <body>
+                <div class="wrapper">
+                <div class="container">
+                <div class="card">
+                <h1>Verify your email</h1>
+                <p>Hi <strong>${username}</strong>,</p>
+                <p>Welcome to Zora.ai. Click the button below to verify your email and complete registration.</p>
+                <a href="${verificationUrl}" class="button" target="_blank">Verify Email Address</a>
+                <p>This link expires in <strong>15 minutes</strong>. If you didn't create this account, ignore this email.</p>
+                <p>Thanks,<br><strong>The Zora.ai Team</strong></p>
+                </div>
+                <div class="footer"><p>© 2026 Zora.ai. All rights reserved.</p></div>
+                </div>
+                </div>
+                </body>
+                </html>`,
             });
-        } catch (emailError) {
+        } 
+        catch (emailError) {
             console.error("[Register] Email send failed:", emailError.message);
 
             const isDev = process.env.NODE_ENV === "development" || !process.env.NODE_ENV;
@@ -170,13 +198,13 @@ p { color: #4b5563; font-size: 15px; line-height: 24px; margin: 0 0 20px; }
             await userModel.findByIdAndDelete(user._id);
             return res.status(500).json({
                 success: false,
-                message: "Unable to send verification email. If using Resend, please verify your custom domain at resend.com/domains or check SMTP credentials.",
+                message: " Unable to send verification email. If using Resend , please verify your custom domain at resend.com/domains or check SMTP credentials.",
             });
         }
 
         return res.status(201).json({
             success: true,
-            message: "Registration successful. Please check your email to verify your account.",
+            message: " Registration successful. Please check your email to verify your account.. ",
             user: { id: user._id, username: user.username, email: user.email },
         });
     } catch (error) {
@@ -192,6 +220,7 @@ p { color: #4b5563; font-size: 15px; line-height: 24px; margin: 0 0 20px; }
 // LOGIN
 // POST /api/auth/login — Public
 // =====================================================
+
 export async function login(req, res) {
     try {
         const { email, password } = req.body;
@@ -253,11 +282,13 @@ export async function login(req, res) {
     }
 }
 
+
 // =====================================================
 // REFRESH TOKENS
 // POST /api/auth/refresh — Public (uses refreshToken cookie)
 // Implements Refresh Token Rotation with Token Reuse Detection
 // =====================================================
+
 export async function refreshTokens(req, res) {
     try {
         const rawRefreshToken = req.cookies?.refreshToken;
@@ -355,6 +386,7 @@ export async function refreshTokens(req, res) {
 // POST /api/auth/logout — Private
 // Revokes the current device's refresh token from DB
 // =====================================================
+
 export async function logout(req, res) {
     try {
         const rawRefreshToken = req.cookies?.refreshToken;
@@ -406,6 +438,7 @@ export async function getMe(req, res) {
 // VERIFY EMAIL
 // GET /api/auth/verify-email?token=... — Public
 // =====================================================
+
 export async function verifyEmail(req, res) {
     const { token } = req.query;
 

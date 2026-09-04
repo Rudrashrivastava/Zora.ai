@@ -36,6 +36,7 @@ const transporter = nodemailer.createTransport({
 
 export async function sendEmail({ to, subject, html, text }) {
     // 1. Resend HTTPS REST API (Port 443 - Unblockable on Render)
+    
     if (process.env.RESEND_API_KEY) {
         try {
             const fromAddress = process.env.RESEND_FROM_EMAIL || "Zora.ai <onboarding@resend.dev>";
@@ -69,12 +70,14 @@ export async function sendEmail({ to, subject, html, text }) {
     }
 
     // 2. Brevo (Sendinblue) - Handles both REST API (xkeysib-) & SMTP Relay (xsmtpsib-) keys
+
     if (process.env.BREVO_API_KEY) {
         const key = process.env.BREVO_API_KEY.trim();
         const senderEmail = process.env.GOOGLE_USER || process.env.EMAIL_USER || "rudrashrivastava45@gmail.com";
         const senderName = process.env.EMAIL_SENDER_NAME || "Zora.ai";
 
         // Case A: Brevo REST API Key (starts with xkeysib-)
+
         if (key.startsWith("xkeysib-")) {
             try {
                 console.log("[Email] Sending via Brevo HTTPS REST API to:", to);
@@ -107,6 +110,7 @@ export async function sendEmail({ to, subject, html, text }) {
         }
 
         // Case B: Brevo SMTP Relay Key (starts with xsmtpsib- or fallback from REST)
+
         try {
             console.log("[Email] Sending via Brevo SMTP Relay to:", to);
             const brevoTransporter = nodemailer.createTransport({
@@ -137,6 +141,7 @@ export async function sendEmail({ to, subject, html, text }) {
     }
 
     // 3. Nodemailer OAuth2 / Gmail SMTP Fallback
+
     const senderName = process.env.EMAIL_SENDER_NAME || "Zora.ai";
     const mailOptions = {
         from: `"${senderName}" <${process.env.GOOGLE_USER || "noreply@zora.ai"}>`,

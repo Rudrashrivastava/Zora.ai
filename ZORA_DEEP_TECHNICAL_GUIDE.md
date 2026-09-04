@@ -1,6 +1,7 @@
 # 🧠 ZORA.AI — DEEP TECHNICAL KNOWLEDGE GUIDE
 ### *Har Technology Ko Simple Language Mein Samajhna — Interview Ready*
 
+
 ---
 
 > **Yeh Guide Kiske Liye Hai?**  
@@ -8,6 +9,7 @@
 > Har cheez: **kya hai → real life example → project mein kyun use kiya → actual code**.
 
 ---
+
 
 ## 📌 INDEX
 
@@ -131,6 +133,7 @@ app.set("trust proxy", 1);
 ```
 
 ```
+
 User IP: 103.21.58.40
     ↓
 [Nginx/Render Load Balancer]  ← yeh proxy hai
@@ -138,6 +141,7 @@ User IP: 103.21.58.40
 [Express Server] ← bina trust proxy: req.ip = 127.0.0.1 (galat!)
                   ← trust proxy ke saath: req.ip = 103.21.58.40 (sahi!)
 ```
+
 
 **Kahan use hota hai:**
 - `req.ip` → actual user ka IP milta hai
@@ -160,6 +164,7 @@ Frontend: http://localhost:5173   (Origin A)
 Backend:  http://localhost:8000   (Origin B)
 ↑ Ye dono alag origins hain → Browser block karega request!
 ```
+
 
 Express mein CORS middleware bataata hai browser ko ki "haan, inhe permission hai mujhse data lene ki":
 

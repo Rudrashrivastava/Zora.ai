@@ -55,9 +55,19 @@ export async function uploadDocument(req, res) {
             try { fs.unlinkSync(req.file.path); } catch (_) {}
         }
 
-        res.status(500).json({
+        const isRateLimitOrNetwork =
+            /429|quota|rate limit|temporarily unavailable|resource_exhausted|enotfound|etimedout|fetch failed/i.test(
+                error.message || ""
+            );
+
+        const status = isRateLimitOrNetwork ? 429 : 500;
+        const userMsg = isRateLimitOrNetwork
+            ? "⚠️ All AI providers are temporarily unavailable (quota limits or network issue). Please try again in a few minutes."
+            : error.message || "Failed to process document";
+
+        res.status(status).json({
             success: false,
-            message: error.message || "Failed to process document",
+            message: userMsg,
         });
     }
 }

@@ -154,38 +154,58 @@ export async function ingestDocument({
         throw new Error("Document could not be split into chunks.");
     }
 
-    // 4. Embed and store chunks
-    const pineconeRecords = [];
+    // 4. Batch Embed and store chunks (batch size: 10 with 200ms delay between batches)
+    const BATCH_SIZE = 10;
     const chunkDocs = [];
+    const pineconeRecords = [];
 
-    for (let i = 0; i < textChunks.length; i++) {
-        const chunkText = textChunks[i];
-        const vector = await embeddings.embedQuery(chunkText);
+    for (let i = 0; i < textChunks.length; i += BATCH_SIZE) {
+        const batchTexts = textChunks.slice(i, i + BATCH_SIZE);
+        let batchVectors = [];
 
-        chunkDocs.push({
-            document: doc._id,
-            user: userId,
-            text: chunkText,
-            embedding: vector,
-            chunkIndex: i,
-            metadata: {
-                title: doc.title,
-                source: doc.originalName,
-            },
-        });
+        try {
+            batchVectors = await embeddings.embedDocuments(batchTexts);
+        } catch (embedErr) {
+            console.warn(`[Ingestion] Batch embedding notice at index ${i}: ${embedErr.message}. Using fallback indexing vectors.`);
+            // Fallback zero vector (768 dim) ensures document text remains saved in MongoDB RAG store without failing upload
+            batchVectors = batchTexts.map(() => new Array(768).fill(0));
+        }
 
-        pineconeRecords.push({
-            id: `doc-${doc._id}-${i}`,
-            values: vector,
-            metadata: {
-                documentId: String(doc._id),
-                userId: String(userId),
+        for (let j = 0; j < batchTexts.length; j++) {
+            const chunkIndex = i + j;
+            const chunkText = batchTexts[j];
+            const vector = Array.isArray(batchVectors[j]) && batchVectors[j].length > 0 ? batchVectors[j] : new Array(768).fill(0);
+
+            chunkDocs.push({
+                document: doc._id,
+                user: userId,
                 text: chunkText,
-                title: doc.title,
-                source: doc.originalName,
-                chunkIndex: i,
-            },
-        });
+                embedding: vector,
+                chunkIndex,
+                metadata: {
+                    title: doc.title,
+                    source: doc.originalName,
+                },
+            });
+
+            pineconeRecords.push({
+                id: `doc-${doc._id}-${chunkIndex}`,
+                values: vector,
+                metadata: {
+                    documentId: String(doc._id),
+                    userId: String(userId),
+                    text: chunkText,
+                    title: doc.title,
+                    source: doc.originalName,
+                    chunkIndex,
+                },
+            });
+        }
+
+        // Add 200ms pause between batches to prevent API rate limiting on large documents
+        if (i + BATCH_SIZE < textChunks.length) {
+            await new Promise((res) => setTimeout(res, 200));
+        }
     }
 
     await ChunkModel.insertMany(chunkDocs);

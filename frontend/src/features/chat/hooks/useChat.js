@@ -330,7 +330,9 @@ export const useChat = () => {
     const handleShareChat = useCallback(
         async (chatId) => {
             try {
-                if (!chatId) throw new Error("Chat ID is required");
+                if (!chatId || chatId === "null" || chatId === "undefined") {
+                    throw new Error("Please select or start a chat first before sharing.");
+                }
 
                 const data = await shareChat(chatId);
                 const shareUrl = data?.shareUrl;
@@ -340,11 +342,14 @@ export const useChat = () => {
                 return { ...data, shareUrl };
             } catch (error) {
                 console.error("Share chat error:", error);
+                const errMsg = error.response?.data?.message || error.message || "";
+                const isRateLimitOrNetwork = /429|quota|rate limit|unavailable|enotfound|etimedout|network/i.test(errMsg);
+
                 dispatch(
                     setError(
-                        error.response?.data?.message ||
-                        error.message ||
-                        "Failed to share chat"
+                        isRateLimitOrNetwork
+                            ? "⚠️ All AI providers are temporarily unavailable (quota limits or network issue). Please try again in a few minutes."
+                            : errMsg || "Failed to share chat"
                     )
                 );
                 throw error;
@@ -359,17 +364,22 @@ export const useChat = () => {
     const handleShareMessage = useCallback(
         async (messageId) => {
             try {
-                if (!messageId) throw new Error("Message ID is required");
+                if (!messageId || messageId === "null" || messageId === "undefined") {
+                    throw new Error("Message ID is required");
+                }
 
                 const data = await shareMessage(messageId);
                 return data;
             } catch (error) {
                 console.error("Share message error:", error);
+                const errMsg = error.response?.data?.message || error.message || "";
+                const isRateLimitOrNetwork = /429|quota|rate limit|unavailable|enotfound|etimedout|network/i.test(errMsg);
+
                 dispatch(
                     setError(
-                        error.response?.data?.message ||
-                        error.message ||
-                        "Failed to share message"
+                        isRateLimitOrNetwork
+                            ? "⚠️ All AI providers are temporarily unavailable (quota limits or network issue). Please try again in a few minutes."
+                            : errMsg || "Failed to share message"
                     )
                 );
                 throw error;
@@ -403,11 +413,14 @@ export const useChat = () => {
                 return data;
             } catch (error) {
                 console.error("Upload document error:", error);
+                const errMsg = error.response?.data?.message || error.message || "";
+                const isRateLimitOrNetwork = /429|quota|rate limit|unavailable|enotfound|etimedout|network/i.test(errMsg);
+
                 dispatch(
                     setError(
-                        error.response?.data?.message ||
-                        error.message ||
-                        "Failed to upload document"
+                        isRateLimitOrNetwork
+                            ? "⚠️ All AI providers are temporarily unavailable (quota limits or network issue). Please try again in a few minutes."
+                            : errMsg || "Failed to upload document"
                     )
                 );
                 throw error;

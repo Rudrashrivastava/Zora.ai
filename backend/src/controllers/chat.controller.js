@@ -118,8 +118,18 @@ export async function sendMessage(req, res) {
     } catch (error) {
         console.error("Send message error:", error);
 
-        res.status(500).json({
-            message: error.message || "Failed to send message",
+        const isRateLimitOrNetwork =
+            /429|quota|rate limit|temporarily unavailable|resource_exhausted|enotfound|etimedout|fetch failed/i.test(
+                error.message || ""
+            );
+
+        const status = isRateLimitOrNetwork ? 429 : 500;
+        const userMsg = isRateLimitOrNetwork
+            ? "⚠️ All AI providers are temporarily unavailable (quota limits or network issue). Please try again in a few minutes."
+            : error.message || "Failed to send message";
+
+        res.status(status).json({
+            message: userMsg,
         });
     }
 }
@@ -138,17 +148,20 @@ export async function getChats(req, res) {
                 updatedAt: -1,
             });
 
-        // Auto-repair legacy "New Chat" titles for chats that have user messages
+        // Fast offline repair for legacy "New Chat" titles (avoids LLM API calls on list retrieval)
         for (const chat of chats) {
             if (!chat.title || chat.title.toLowerCase() === "new chat" || chat.title.toLowerCase() === "new search") {
                 const firstUserMsg = await messageModel
                     .findOne({ chat: chat._id, role: "user" })
                     .sort({ createdAt: 1 });
                 if (firstUserMsg && firstUserMsg.content) {
-                    const newTitle = await generateChatTitle(firstUserMsg.content);
-                    if (newTitle && newTitle.toLowerCase() !== "new chat") {
-                        chat.title = newTitle;
-                        await chatModel.findByIdAndUpdate(chat._id, { title: newTitle });
+                    const cleanMsg = firstUserMsg.content.trim().replace(/^["']|["']$/g, "").replace(/[\r\n]+/g, " ");
+                    const words = cleanMsg.split(/\s+/).slice(0, 4);
+                    const newTitle = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+                    if (newTitle && newTitle.length > 0) {
+                        const finalTitle = newTitle.length > 40 ? newTitle.slice(0, 40) + "..." : newTitle;
+                        chat.title = finalTitle;
+                        await chatModel.findByIdAndUpdate(chat._id, { title: finalTitle });
                     }
                 }
             }
@@ -170,9 +183,15 @@ export async function getChats(req, res) {
 // ======================================================
 // GET MESSAGES
 // ======================================================
+// ======================================================
+// GET MESSAGES
+// ======================================================
 export async function getMessages(req, res) {
     try {
-        const { chatId } = req.params;
+        const chatId = cleanChatId(req.params.chatId);
+        if (!chatId) {
+            return res.status(400).json({ message: "Invalid chat ID" });
+        }
 
         const chat = await chatModel.findOne({
             _id: chatId,
@@ -211,7 +230,10 @@ export async function getMessages(req, res) {
 // ======================================================
 export async function deleteChat(req, res) {
     try {
-        const { chatId } = req.params;
+        const chatId = cleanChatId(req.params.chatId);
+        if (!chatId) {
+            return res.status(400).json({ message: "Invalid chat ID" });
+        }
 
         const chat = await chatModel.findOneAndDelete({
             _id: chatId,
@@ -246,7 +268,10 @@ export async function deleteChat(req, res) {
 // ======================================================
 export async function renameChat(req, res) {
     try {
-        const { chatId } = req.params;
+        const chatId = cleanChatId(req.params.chatId);
+        if (!chatId) {
+            return res.status(400).json({ message: "Invalid chat ID" });
+        }
         const { title } = req.body;
 
         if (!title || !title.trim()) {
@@ -293,7 +318,10 @@ export async function renameChat(req, res) {
 // ======================================================
 export async function togglePinChat(req, res) {
     try {
-        const { chatId } = req.params;
+        const chatId = cleanChatId(req.params.chatId);
+        if (!chatId) {
+            return res.status(400).json({ message: "Invalid chat ID" });
+        }
 
         const chat = await chatModel.findOne({
             _id: chatId,
@@ -329,7 +357,12 @@ export async function togglePinChat(req, res) {
 // ======================================================
 export async function shareChat(req, res) {
     try {
-        const { chatId } = req.params;
+        const chatId = cleanChatId(req.params.chatId);
+        if (!chatId) {
+            return res.status(400).json({
+                message: "Invalid chat ID provided for sharing",
+            });
+        }
 
         const chat = await chatModel.findOne({
             _id: chatId,
@@ -373,7 +406,12 @@ export async function shareChat(req, res) {
 // ======================================================
 export async function shareMessage(req, res) {
     try {
-        const { messageId } = req.params;
+        const messageId = cleanChatId(req.params.messageId);
+        if (!messageId) {
+            return res.status(400).json({
+                message: "Invalid message ID provided for sharing",
+            });
+        }
 
         const message = await messageModel.findById(messageId);
 
@@ -425,11 +463,11 @@ export async function shareMessage(req, res) {
 // ======================================================
 export async function getSharedChat(req, res) {
     try {
-        const { chatId } = req.params;
+        const chatId = cleanChatId(req.params.chatId);
 
         if (!chatId) {
             return res.status(400).json({
-                message: "Chat ID is required",
+                message: "Valid Chat ID is required",
             });
         }
 
@@ -474,11 +512,11 @@ export async function getSharedChat(req, res) {
 // ======================================================
 export async function getSharedMessage(req, res) {
     try {
-        const { messageId } = req.params;
+        const messageId = cleanChatId(req.params.messageId);
 
         if (!messageId) {
             return res.status(400).json({
-                message: "Message ID is required",
+                message: "Valid Message ID is required",
             });
         }
 

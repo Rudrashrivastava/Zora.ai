@@ -26,15 +26,15 @@ function buildProviders(chatHistory) {
 
         console.log(`[AI] Gemini mode: ${isOAuth ? "OAuth Bearer Token (AQ.)" : "Standard API Key"}`);
 
-        // Tier 1: Gemini 1.5 Flash Latest (stable alias always resolves correctly)
+        // Tier 1: Gemini 3.6 Flash (Latest Google AI model)
+        providers.push({
+            name: "Gemini 3.6 Flash",
+            invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-3.6-flash")).invoke(chatHistory),
+        });
+        // Tier 2: Gemini 1.5 Flash
         providers.push({
             name: "Gemini 1.5 Flash",
-            invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-1.5-flash-latest")).invoke(chatHistory),
-        });
-        // Tier 2: Gemini 1.5 Pro Latest
-        providers.push({
-            name: "Gemini 1.5 Pro",
-            invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-1.5-pro-latest")).invoke(chatHistory),
+            invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-1.5-flash")).invoke(chatHistory),
         });
     }
 

@@ -20,30 +20,46 @@ if (process.env.GEMINI_API_KEY) {
 
 export const embeddings = {
     async embedQuery(text) {
+        let lastErr = null;
+
         if (mistralEmbeddings) {
             try {
                 return await mistralEmbeddings.embedQuery(text);
             } catch (err) {
-                console.warn("Mistral embedding failed, attempting fallback:", err.message);
+                console.warn("[Embeddings] Mistral query embedding failed, trying fallback:", err.message);
+                lastErr = err;
             }
         }
         if (geminiEmbeddings) {
-            return await geminiEmbeddings.embedQuery(text);
+            try {
+                return await geminiEmbeddings.embedQuery(text);
+            } catch (err) {
+                console.warn("[Embeddings] Gemini query embedding failed:", err.message);
+                lastErr = err;
+            }
         }
-        throw new Error("No embedding provider available. Please set MISTRAL_API_KEY or GEMINI_API_KEY.");
+        throw lastErr || new Error("All AI embedding providers are temporarily unavailable (quota limits or network issue).");
     },
 
     async embedDocuments(documents) {
+        let lastErr = null;
+
         if (mistralEmbeddings) {
             try {
                 return await mistralEmbeddings.embedDocuments(documents);
             } catch (err) {
-                console.warn("Mistral documents embedding failed, attempting fallback:", err.message);
+                console.warn("[Embeddings] Mistral documents embedding failed, trying fallback:", err.message);
+                lastErr = err;
             }
         }
         if (geminiEmbeddings) {
-            return await geminiEmbeddings.embedDocuments(documents);
+            try {
+                return await geminiEmbeddings.embedDocuments(documents);
+            } catch (err) {
+                console.warn("[Embeddings] Gemini documents embedding failed:", err.message);
+                lastErr = err;
+            }
         }
-        throw new Error("No embedding provider available. Please set MISTRAL_API_KEY or GEMINI_API_KEY.");
+        throw lastErr || new Error("All AI embedding providers are temporarily unavailable (quota limits or network issue).");
     },
 };

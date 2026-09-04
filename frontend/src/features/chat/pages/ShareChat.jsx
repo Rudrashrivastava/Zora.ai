@@ -190,9 +190,13 @@ const ShareChat = () => {
 
                 if (!mounted) return;
 
+                const errMsg = err.response?.data?.message || err.message || "";
+                const isRateLimitOrNetwork = /429|quota|rate limit|unavailable|enotfound|etimedout|network/i.test(errMsg);
+
                 setError(
-                    err.response?.data?.message ||
-                    "This shared conversation or message is unavailable."
+                    isRateLimitOrNetwork
+                        ? "⚠️ All AI providers are temporarily unavailable (quota limits or network issue). Please try again in a few minutes."
+                        : errMsg || "This shared conversation or message is unavailable."
                 );
 
             } finally {

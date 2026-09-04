@@ -80,9 +80,9 @@ export async function sendMessage(req, res) {
             .sort({ createdAt: 1 });
 
         // ------------------------------------------
-        // AI RESPONSE (with RAG + Web Search)
+        // AI RESPONSE (with RAG + Web Search + User Profile)
         // ------------------------------------------
-        const { answer, sources } = await generateResponse(contextMessages, req.user.id);
+        const { answer, sources } = await generateResponse(contextMessages, req.user.id, req.user);
 
         // ------------------------------------------
         // SAVE AI MESSAGE

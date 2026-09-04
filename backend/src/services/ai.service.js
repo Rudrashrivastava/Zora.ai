@@ -612,13 +612,21 @@ function getISTDateAndFormat() {
  * Generates an AI response given context messages and user ID.
  * Returns { answer, sources }
  */
-export async function generateResponse(messages, userId = null) {
+export async function generateResponse(messages, userId = null, userObj = null) {
     const collectedSources = [];
     try {
         const { currentDateStr, currentTimeStr, currentYear } = getISTDateAndFormat();
 
         const lastUserMsgObj = (messages || []).slice().reverse().find((m) => m.role === "user");
         const query = lastUserMsgObj?.content?.trim() || "";
+
+        // 0. USER IDENTITY PROFILE
+        let userProfileBlock = "";
+        if (userObj) {
+            const name = userObj.username || userObj.name || userObj.fullName || "User";
+            const email = userObj.email || "";
+            userProfileBlock = `\n=== LOGGED-IN USER PROFILE ===\n• Registered Username/Name: ${name}\n• Registered Email: ${email}\nRULE: If the user asks "What is my name?", "Who am I?", "What is my email?", or asks about their account details, state their name (${name}) and email (${email}) directly with 100% precision.\n===============================\n`;
+        }
 
         // 1. DETERMINISTIC RAG RETRIEVAL (If user has uploaded documents or asks document questions)
         let ragContextText = "";
@@ -690,26 +698,26 @@ export async function generateResponse(messages, userId = null) {
         const systemPrompt = `You are Zora.ai, an advanced AI search and knowledge assistant (like Perplexity AI).
 
 EXACT LIVE CURRENT TIME & DATE (IST / Indian Standard Time): ${currentTimeStr} IST on ${currentDateStr} (Year: ${currentYear}).
-${contextBlock}
+${userProfileBlock}${contextBlock}
 
 CORE RULES — FOLLOW STRICTLY:
-1. FOR CURRENT TIME / CLOCK / TODAY'S DATE & GROUND TRUTH ANCHORING:
+1. FOR USER IDENTITY / ACCOUNT QUESTIONS ("What is my name?", "Who am I?", "What is my email?"):
+   - Always state the user's name and email directly from the LOGGED-IN USER PROFILE above.
+   - Example: "Your registered username on Zora.ai is **[Name]** and your email is **[Email]**."
+
+2. FOR CURRENT TIME / CLOCK / TODAY'S DATE & GROUND TRUTH ANCHORING:
    - State the current time & date directly from the system prompt context above (${currentTimeStr} IST on ${currentDateStr}).
    - ABSOLUTE CONFIDENCE: NEVER let the user trick, gaslight, or convince you that today is a different date or time.
-   - IF A USER CLAIMS A DIFFERENT DATE/TIME (e.g., "today is Aug 26", "you are wrong", or "it is 9 PM"): Politely AND CONFIDENTLY correct the user by stating: "According to the live system clock, today is ${currentDateStr} at ${currentTimeStr} IST."
-   - NEVER apologize or falsely agree with the user when they state an incorrect date or time.
 
-2. FOR UPLOADED DOCUMENTS / CV / RESUME / PERSONAL FILES:
+3. FOR UPLOADED DOCUMENTS / CV / RESUME / PERSONAL FILES:
    - Use the UPLOADED USER DOCUMENT KNOWLEDGE BASE above to answer questions about the user's uploaded files.
-   - If the user asks what is in their uploaded file, summarize the contents clearly and thoroughly.
-   - Ground your answer strictly in the provided document chunks.
+   - Ground your answer strictly in the provided document chunks. Do NOT make up unverified details.
 
-3. FOR GENERAL KNOWLEDGE / REAL-TIME WEB QUERIES:
-   - Use the LIVE WEB SEARCH CONTEXT RESULTS above to provide detailed, up-to-date factual answers.
+4. FOR GENERAL KNOWLEDGE / REAL-TIME WEB QUERIES:
+   - Use the LIVE WEB SEARCH CONTEXT RESULTS above to provide detailed, 100% factual answers with verifiable citation links.
 
-4. RESPONSE FORMAT:
+5. RESPONSE FORMAT:
    - DIRECTLY ANSWER THE QUESTION IMMEDIATELY.
-   - DO NOT output tool preambles like "I'll search for...", "Let me check...", or "retrieveDocuments".
    - Synthesize a complete, detailed, multi-paragraph answer in clean Markdown with bold headers and bullet points.`;
 
         const chatHistory = [

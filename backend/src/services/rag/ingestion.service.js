@@ -21,15 +21,27 @@ function safeDecode(str) {
     }
 }
 
+function deduplicateRepeatedPhrases(text) {
+    if (!text) return "";
+    let cleaned = text;
+    let prev = "";
+    while (cleaned !== prev) {
+        prev = cleaned;
+        cleaned = cleaned.replace(/\b((?:\w+\s*){1,5})\s+\1\b/gi, "$1");
+    }
+    return cleaned;
+}
+
 function cleanExtractedText(text) {
     if (!text) return "";
-    return text
+    const cleaned = text
         .replace(/([a-z])([A-Z])/g, "$1 $2")
         .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
         .replace(/([a-zA-Z])([0-9])/g, "$1 $2")
         .replace(/([0-9])([a-zA-Z])/g, "$1 $2")
         .replace(/[ \t]+/g, " ")
         .trim();
+    return deduplicateRepeatedPhrases(cleaned);
 }
 
 /**
@@ -60,21 +72,29 @@ async function extractPDFText(filePath) {
 
                         for (const r of textObj?.R || []) {
                             const str = safeDecode(r.T);
-                            if (str) lineMap.get(y).push(str);
+                            if (str) {
+                                const lineList = lineMap.get(y);
+                                if (lineList.length === 0 || lineList[lineList.length - 1] !== str) {
+                                    lineList.push(str);
+                                }
+                            }
                         }
                     }
 
                     const sortedYs = Array.from(lineMap.keys()).sort((a, b) => a - b);
+                    let prevLine = "";
                     for (const y of sortedYs) {
-                        const lineStr = lineMap.get(y).join(" ").replace(/[ \t]+/g, " ").trim();
-                        if (lineStr) {
+                        let lineStr = lineMap.get(y).join(" ").replace(/[ \t]+/g, " ").trim();
+                        lineStr = deduplicateRepeatedPhrases(lineStr);
+                        if (lineStr && lineStr !== prevLine) {
                             fullText += lineStr + "\n";
+                            prevLine = lineStr;
                         }
                     }
                 }
 
                 if (!fullText.trim() && typeof pdfParser.getRawTextContent === "function") {
-                    fullText = pdfParser.getRawTextContent();
+                    fullText = deduplicateRepeatedPhrases(pdfParser.getRawTextContent());
                 }
 
                 resolve(cleanExtractedText(fullText));
@@ -159,22 +179,38 @@ export async function ingestDocument({
     const chunkDocs = [];
     const pineconeRecords = [];
 
-    for (let i = 0; i < textChunks.length; i += BATCH_SIZE) {
-        const batchTexts = textChunks.slice(i, i + BATCH_SIZE);
+    // Deduplicate chunks — prevent identical repeated text blocks from poisoning the store
+    const uniqueChunks = [...new Map(textChunks.map((t) => [t.trim(), t])).values()];
+    console.log(`[Ingestion] ${textChunks.length} raw chunks → ${uniqueChunks.length} unique chunks after dedup`);
+
+    for (let i = 0; i < uniqueChunks.length; i += BATCH_SIZE) {
+        const batchTexts = uniqueChunks.slice(i, i + BATCH_SIZE);
         let batchVectors = [];
 
         try {
             batchVectors = await embeddings.embedDocuments(batchTexts);
         } catch (embedErr) {
-            console.warn(`[Ingestion] Batch embedding notice at index ${i}: ${embedErr.message}. Using fallback indexing vectors.`);
-            // Fallback zero vector (768 dim) ensures document text remains saved in MongoDB RAG store without failing upload
-            batchVectors = batchTexts.map(() => new Array(768).fill(0));
+            // CRITICAL FIX: Do NOT use zero vectors — they poison retrieval.
+            // Mark document as failed so user knows to re-upload when quota is available.
+            console.error(`[Ingestion] Embedding failed at batch ${i}: ${embedErr.message}`);
+            doc.status = "failed";
+            await doc.save();
+            throw new Error(
+                `Document embedding failed: ${embedErr.message}. ` +
+                `This is usually caused by API quota limits. Please try uploading again in a few minutes.`
+            );
         }
 
         for (let j = 0; j < batchTexts.length; j++) {
             const chunkIndex = i + j;
             const chunkText = batchTexts[j];
-            const vector = Array.isArray(batchVectors[j]) && batchVectors[j].length > 0 ? batchVectors[j] : new Array(768).fill(0);
+            const vector = batchVectors[j];
+
+            // Skip any chunk that got a zero/null vector — safety guard
+            if (!Array.isArray(vector) || vector.length === 0 || vector.every((v) => v === 0)) {
+                console.warn(`[Ingestion] Skipping chunk ${chunkIndex} — zero/null vector returned.`);
+                continue;
+            }
 
             chunkDocs.push({
                 document: doc._id,
@@ -203,7 +239,7 @@ export async function ingestDocument({
         }
 
         // Add 200ms pause between batches to prevent API rate limiting on large documents
-        if (i + BATCH_SIZE < textChunks.length) {
+        if (i + BATCH_SIZE < uniqueChunks.length) {
             await new Promise((res) => setTimeout(res, 200));
         }
     }

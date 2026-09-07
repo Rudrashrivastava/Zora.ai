@@ -39,7 +39,7 @@ export async function retrieveDocuments(query, userId = null, topK = 4) {
 
             if (pineconeResult?.matches && pineconeResult.matches.length > 0) {
                 const docs = pineconeResult.matches
-                    .filter((m) => m.score > 0.4)
+                    .filter((m) => m.score > 0.25) // Lowered from 0.4 — 0.25 is better for semantic similarity
                     .map((m) => ({
                         text: m.metadata?.text || "",
                         score: m.score,
@@ -48,7 +48,10 @@ export async function retrieveDocuments(query, userId = null, topK = 4) {
                         documentId: m.metadata?.documentId,
                         type: "document",
                     }));
-                if (docs.length > 0) return docs;
+                if (docs.length > 0) {
+                    console.log(`[Retrieval] Pinecone returned ${docs.length} relevant chunks (min score 0.25)`);
+                    return docs;
+                }
             }
         } catch (pineErr) {
             // Pinecone failed or unconfigured, fall through to MongoDB cosine similarity
@@ -66,8 +69,18 @@ export async function retrieveDocuments(query, userId = null, topK = 4) {
             return [];
         }
 
-        // Calculate cosine similarity for all chunks
-        const scoredChunks = chunks.map((chunk) => {
+        // SAFETY: Skip chunks that have zero vectors (poisoned by old fallback bug)
+        const validChunks = chunks.filter(
+            (c) => Array.isArray(c.embedding) && c.embedding.length > 0 && !c.embedding.every((v) => v === 0)
+        );
+
+        if (validChunks.length === 0) {
+            console.warn("[Retrieval] All stored chunks have zero vectors — document was ingested with broken embeddings. Please re-upload.");
+            return [];
+        }
+
+        // Calculate cosine similarity for all valid chunks
+        const scoredChunks = validChunks.map((chunk) => {
             const score = cosineSimilarity(queryEmbedding, chunk.embedding);
             return {
                 text: chunk.text,
@@ -84,11 +97,14 @@ export async function retrieveDocuments(query, userId = null, topK = 4) {
 
         const filtered = scoredChunks.filter((item) => item.score > 0.2);
         if (filtered.length > 0) {
+            console.log(`[Retrieval] MongoDB returned ${filtered.length} relevant chunks (min score 0.2)`);
             return filtered.slice(0, topK);
         }
 
-        // Fallback: return top chunks regardless of score if user has uploaded docs
-        return scoredChunks.slice(0, topK);
+        // CRITICAL FIX: Do NOT return random zero-scored chunks — this causes garbage output.
+        // If nothing scores above 0.2, return empty array so AI knows no relevant document context exists.
+        console.warn(`[Retrieval] No chunks scored above 0.2 for query. Best score was: ${scoredChunks[0]?.score?.toFixed(4)}. Returning empty context.`);
+        return [];
 
     } catch (error) {
         console.error("Retrieval error:", error);

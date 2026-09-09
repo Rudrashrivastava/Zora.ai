@@ -11,6 +11,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom', '@reduxjs/toolkit', 'react-redux'],
+          motion: ['framer-motion', 'lenis', 'swiper'],
           icons: ['lucide-react'],
         },
       },

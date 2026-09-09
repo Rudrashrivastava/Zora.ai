@@ -16,22 +16,26 @@ function buildProviders(chatHistory) {
     const providers = [];
 
     if (geminiKey) {
-        // Detect OAuth Bearer Token (starts with "AQ.") vs standard API key
         const isOAuth = geminiKey.startsWith("AQ.");
 
-        // OAuth tokens use Authorization: Bearer header; standard keys use apiKey param
+        // Safe config that works with both standard API keys and OAuth tokens
         const geminiConfig = (model) => isOAuth
-            ? { model, apiKey: undefined, customHeaders: { Authorization: `Bearer ${geminiKey}` }, temperature: 0.2, maxRetries: 0 }
+            ? { model, apiKey: geminiKey, customHeaders: { Authorization: `Bearer ${geminiKey}` }, temperature: 0.2, maxRetries: 0 }
             : { model, apiKey: geminiKey, temperature: 0.2, maxRetries: 0 };
 
         console.log(`[AI] Gemini mode: ${isOAuth ? "OAuth Bearer Token (AQ.)" : "Standard API Key"}`);
 
-        // Tier 1: Gemini 1.5 Flash (Primary — ultra fast, high quota)
+        // Tier 1: Gemini 1.5 Flash Latest
+        providers.push({
+            name: "Gemini 1.5 Flash Latest",
+            invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-1.5-flash-latest")).invoke(chatHistory),
+        });
+        // Tier 2: Gemini 1.5 Flash
         providers.push({
             name: "Gemini 1.5 Flash",
             invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-1.5-flash")).invoke(chatHistory),
         });
-        // Tier 2: Gemini 1.5 Pro (Secondary — higher reasoning fallback)
+        // Tier 3: Gemini 1.5 Pro
         providers.push({
             name: "Gemini 1.5 Pro",
             invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-1.5-pro")).invoke(chatHistory),
@@ -39,12 +43,23 @@ function buildProviders(chatHistory) {
     }
 
     if (mistralKey) {
-        // Tier 3: Mistral AI (completely independent provider — always works when Gemini is down)
+        // Tier 4: Mistral Small Latest
         providers.push({
             name: "Mistral AI (mistral-small-latest)",
             invoke: () =>
                 new ChatMistralAI({
                     model: "mistral-small-latest",
+                    apiKey: mistralKey,
+                    temperature: 0.2,
+                    maxRetries: 0,
+                }).invoke(chatHistory),
+        });
+        // Tier 5: Mistral Open 7B
+        providers.push({
+            name: "Mistral AI (open-mistral-7b)",
+            invoke: () =>
+                new ChatMistralAI({
+                    model: "open-mistral-7b",
                     apiKey: mistralKey,
                     temperature: 0.2,
                     maxRetries: 0,
@@ -767,6 +782,32 @@ CORE RULES — FOLLOW STRICTLY:
 
         if (!rawAnswer?.trim()) {
             console.error("[AI] All providers failed. Last error:", lastError?.message);
+
+            // Zero-Downtime Fallback: If RAG context was retrieved, return synthesized document response
+            if (ragContextText) {
+                console.log("[AI] Utilizing zero-downtime RAG context fallback response");
+                const fallbackAnswer = `### 📚 Document Search Results\n\n${ragContextText}\n\n*(Note: Cloud LLM providers are currently experiencing high demand. The above information was retrieved directly from your indexed knowledge base.)*`;
+                return { answer: fallbackAnswer, sources: collectedSources };
+            }
+
+            // Zero-Downtime Fallback for User Identity / Greetings
+            if (userObj && /name|who am i|email|account|profile/i.test(query)) {
+                const name = userObj.username || userObj.name || userObj.fullName || "User";
+                const email = userObj.email || "";
+                return {
+                    answer: `Hey **${name}**! Your registered email on Zora.ai is **${email}**.`,
+                    sources: collectedSources,
+                };
+            }
+
+            if (/^(hi|hey|heyyy|hello|hola|greetings|good morning|good evening)\b/i.test(query)) {
+                const name = userObj?.username || userObj?.name || "there";
+                return {
+                    answer: `Hey ${name}! 👋 Welcome back to Zora.ai! How can I assist you today?`,
+                    sources: collectedSources,
+                };
+            }
+
             return {
                 answer: "⚠️ All AI providers are temporarily unavailable (quota limits or network issue). Please try again in a few minutes.",
                 sources: collectedSources,

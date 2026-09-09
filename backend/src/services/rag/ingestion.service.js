@@ -21,27 +21,15 @@ function safeDecode(str) {
     }
 }
 
-function deduplicateRepeatedPhrases(text) {
-    if (!text) return "";
-    let cleaned = text;
-    let prev = "";
-    while (cleaned !== prev) {
-        prev = cleaned;
-        cleaned = cleaned.replace(/\b((?:\w+\s*){1,5})\s+\1\b/gi, "$1");
-    }
-    return cleaned;
-}
-
 function cleanExtractedText(text) {
     if (!text) return "";
-    const cleaned = text
+    return text
+        .replace(/\r\n/g, "\n")
         .replace(/([a-z])([A-Z])/g, "$1 $2")
         .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
-        .replace(/([a-zA-Z])([0-9])/g, "$1 $2")
-        .replace(/([0-9])([a-zA-Z])/g, "$1 $2")
         .replace(/[ \t]+/g, " ")
+        .replace(/\n\s*\n\s*\n+/g, "\n\n")
         .trim();
-    return deduplicateRepeatedPhrases(cleaned);
 }
 
 /**
@@ -84,8 +72,7 @@ async function extractPDFText(filePath) {
                     const sortedYs = Array.from(lineMap.keys()).sort((a, b) => a - b);
                     let prevLine = "";
                     for (const y of sortedYs) {
-                        let lineStr = lineMap.get(y).join(" ").replace(/[ \t]+/g, " ").trim();
-                        lineStr = deduplicateRepeatedPhrases(lineStr);
+                        const lineStr = lineMap.get(y).join(" ").replace(/[ \t]+/g, " ").trim();
                         if (lineStr && lineStr !== prevLine) {
                             fullText += lineStr + "\n";
                             prevLine = lineStr;
@@ -94,7 +81,7 @@ async function extractPDFText(filePath) {
                 }
 
                 if (!fullText.trim() && typeof pdfParser.getRawTextContent === "function") {
-                    fullText = deduplicateRepeatedPhrases(pdfParser.getRawTextContent());
+                    fullText = pdfParser.getRawTextContent();
                 }
 
                 resolve(cleanExtractedText(fullText));

@@ -35,6 +35,9 @@ const chunkSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+chunkSchema.index({ user: 1, document: 1 });
+chunkSchema.index({ user: 1, createdAt: -1 });
+
 export const ChunkModel = mongoose.model("Chunk", chunkSchema);
 
 const documentSchema = new mongoose.Schema(

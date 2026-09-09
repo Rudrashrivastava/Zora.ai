@@ -12,11 +12,15 @@ if (process.env.MISTRAL_API_KEY) {
 }
 
 if (process.env.GEMINI_API_KEY) {
-    geminiEmbeddings = new GoogleGenerativeAIEmbeddings({
-        apiKey: process.env.GEMINI_API_KEY,
-        model: "text-embedding-004",
-    });
+    const geminiKey = process.env.GEMINI_API_KEY.trim();
+    const isOAuth = geminiKey.startsWith("AQ.");
+    geminiEmbeddings = new GoogleGenerativeAIEmbeddings(
+        isOAuth
+            ? { model: "text-embedding-004", apiKey: undefined, customHeaders: { Authorization: `Bearer ${geminiKey}` } }
+            : { model: "text-embedding-004", apiKey: geminiKey }
+    );
 }
+
 
 export const embeddings = {
     async embedQuery(text) {

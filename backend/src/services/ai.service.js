@@ -655,13 +655,14 @@ export async function generateResponse(messages, userId = null, userObj = null) 
             }
         }
 
-        // 2. DETERMINISTIC WEB SEARCH RETRIEVAL (If question is web search, news, sports, breakthrough, weather, etc.)
+        // 2. DETERMINISTIC WEB SEARCH RETRIEVAL (Only for queries that explicitly request current/live web information)
         let webContextText = "";
-        const isDocQuestion = /file|pdf|upload|document|cv|resume|my notes/i.test(query) && ragContextText.length > 0;
+        const isExplicitWebSearch = /search|news|latest|today|current|price|weather|score|live|who is|what is the price|happened in 2024|happened in 2025|happened in 2026/i.test(query);
 
-        if (!isDocQuestion && query) {
+        // Only trigger pre-retrieval web search if explicitly required AND NO document context was retrieved
+        if (isExplicitWebSearch && !ragContextText && query) {
             try {
-                console.log(`[WebSearch] Pre-retrieving web results for: "${query}"`);
+                console.log(`[WebSearch] Pre-retrieving web results for explicit search query: "${query}"`);
                 const rawResults = await searchInternet({ query });
                 const parsed = typeof rawResults === "string" ? JSON.parse(rawResults) : rawResults;
                 const items = parsed?.results || [];

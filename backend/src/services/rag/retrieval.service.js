@@ -66,11 +66,14 @@ export async function retrieveDocuments(query, userId = null, topK = 5) {
 
         // 2. Direct MongoDB Vector & Keyword Fallback Search
         const filter = userId ? { user: userId } : {};
-        const chunks = await ChunkModel.find(filter)
+        const rawChunks = await ChunkModel.find(filter)
             .select("text embedding metadata document")
             .populate("document", "title originalName")
             .limit(200)
             .lean();
+
+        // CRITICAL FIX: Filter out orphaned chunks whose parent document has been deleted by user
+        const chunks = (rawChunks || []).filter((c) => c.document && c.document._id);
 
         if (!chunks || chunks.length === 0) {
             return [];
@@ -132,9 +135,9 @@ export async function retrieveDocuments(query, userId = null, topK = 5) {
             }
         }
 
-        // 4. General Document Fallback (When asking general overview/summary questions on uploaded files)
+        // 4. General Document Fallback (When asking general overview/summary questions on active uploaded files)
         if (/summary|summarize|document|file|pdf|content|overview|all|read|my doc|notes|resume|cv|who|what/i.test(query)) {
-            console.log(`[Retrieval] Returning top ${Math.min(chunks.length, topK)} default chunks for general document inquiry`);
+            console.log(`[Retrieval] Returning top ${Math.min(chunks.length, topK)} default chunks for active document inquiry`);
             return chunks.slice(0, topK).map((c) => ({
                 text: c.text,
                 score: 0.5,

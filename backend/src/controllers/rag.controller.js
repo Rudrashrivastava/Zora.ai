@@ -3,6 +3,8 @@ import DocumentModel, { ChunkModel } from "../models/document.model.js";
 import { ingestDocument } from "../services/rag/ingestion.service.js";
 import { retrieveDocuments } from "../services/rag/retrieval.service.js";
 
+import { index as pineconeIndex } from "../services/rag/pinecone.service.js";
+
 // ======================================================
 // UPLOAD & INGEST DOCUMENT
 // ======================================================
@@ -113,11 +115,28 @@ export async function deleteDocument(req, res) {
             });
         }
 
-        // Delete all associated chunks
+        // Delete all associated chunks for this document
         await ChunkModel.deleteMany({
             document: docId,
             user: req.user.id,
         });
+
+        // Also clean up any orphaned chunks
+        await ChunkModel.deleteMany({
+            user: req.user.id,
+            document: { $in: [null, undefined] },
+        });
+
+        // Clean up Pinecone vectors if configured
+        try {
+            if (pineconeIndex) {
+                await pineconeIndex.deleteMany({
+                    filter: { documentId: String(docId), userId: String(req.user.id) },
+                });
+            }
+        } catch (pineErr) {
+            console.warn("[Pinecone Delete] Skipped or failed:", pineErr.message);
+        }
 
         res.status(200).json({
             success: true,

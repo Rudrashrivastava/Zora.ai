@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router";
 
-import LandingPage from "../features/landing/pages/CinematicLandingPage";
+import LandingPage from "../features/landing/pages/LandingPage";
 import Login from "../features/auth/pages/Login";
 import Register from "../features/auth/pages/Register";
 import EmailVerified from "../features/auth/pages/EmailVerified";

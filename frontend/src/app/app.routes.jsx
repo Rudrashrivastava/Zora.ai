@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router";
 
+import LandingPage from "../features/landing/pages/LandingPage";
 import Login from "../features/auth/pages/Login";
 import Register from "../features/auth/pages/Register";
 import EmailVerified from "../features/auth/pages/EmailVerified";
@@ -10,6 +11,15 @@ import ShareChat from "../features/chat/pages/ShareChat";
 import Protected from "../features/auth/components/Protected";
 
 export const router = createBrowserRouter([
+    // =====================================================
+    // LANDING PAGE (Hero Section)
+    // =====================================================
+
+    {
+        path: "/",
+        element: <LandingPage />,
+    },
+
     // =====================================================
     // AUTH
     // =====================================================
@@ -39,13 +49,12 @@ export const router = createBrowserRouter([
         element: <VerifyEmail />,
     },
 
-
     // =====================================================
-    // PROTECTED DASHBOARD
+    // PROTECTED DASHBOARD / AI WORKSPACE
     // =====================================================
 
     {
-        path: "/",
+        path: "/chat",
         element: (
             <Protected>
                 <Dashboard />
@@ -55,9 +64,12 @@ export const router = createBrowserRouter([
 
     {
         path: "/dashboard",
-        element: <Navigate to="/" replace />,
+        element: (
+            <Protected>
+                <Dashboard />
+            </Protected>
+        ),
     },
-
 
     // =====================================================
     // PUBLIC SHARED CHAT

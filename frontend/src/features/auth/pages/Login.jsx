@@ -38,8 +38,7 @@ const Login = () => {
         });
 
         // ONLY SUCCESS COMES HERE
-
-        navigate("/", {
+        navigate("/chat", {
             replace: true,
         });
 
@@ -63,7 +62,7 @@ const Login = () => {
 
 
     if (!loading && user) {
-        return <Navigate to="/" replace />;
+        return <Navigate to="/chat" replace />;
     }
 
 

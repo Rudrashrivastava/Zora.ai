@@ -24,6 +24,9 @@ function safeDecode(str) {
 function cleanExtractedText(text) {
     if (!text) return "";
     return text
+        .replace(/â€“|â€”|â\x80\x93|â\x80\x94|â\s*/g, " - ")
+        .replace(/â€˜|â€™/g, "'")
+        .replace(/â€œ|â€/g, '"')
         .replace(/\r\n/g, "\n")
         .replace(/([a-z])([A-Z])/g, "$1 $2")
         .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")

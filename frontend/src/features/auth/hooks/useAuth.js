@@ -16,7 +16,7 @@ export function useAuth() {
     useEffect(() => {
         const handleForcedLogout = () => {
             dispatch(clearUser());
-            navigate("/login", { replace: true });
+            navigate("/", { replace: true });
         };
 
         window.addEventListener("auth:logout-required", handleForcedLogout);
@@ -101,7 +101,7 @@ export function useAuth() {
         } finally {
             dispatch(clearUser());
             dispatch(setLoading(false));
-            navigate("/login", { replace: true });
+            navigate("/", { replace: true });
         }
     }
 

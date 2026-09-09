@@ -45,7 +45,7 @@ export async function uploadDocument(req, res) {
 
         res.status(201).json({
             success: true,
-            message: "Document uploaded and indexed successfully",
+            message: `Document indexed successfully — ${document.chunkCount} content chunks extracted and embedded.`,
             document,
         });
     } catch (error) {
@@ -61,10 +61,13 @@ export async function uploadDocument(req, res) {
             /429|quota|rate limit|temporarily unavailable|resource_exhausted|enotfound|etimedout|fetch failed/i.test(
                 error.message || ""
             );
+        const isOCRError = /GEMINI_API_KEY|Gemini Vision OCR|OCR|vision/i.test(error.message || "");
 
         const status = isRateLimitOrNetwork ? 429 : 500;
         const userMsg = isRateLimitOrNetwork
-            ? "⚠️ All AI providers are temporarily unavailable (quota limits or network issue). Please try again in a few minutes."
+            ? "⚠️ AI processing is temporarily unavailable (quota limits or network issue). Please try again in a few minutes."
+            : isOCRError
+            ? "⚠️ This appears to be a scanned/handwritten PDF. AI-powered OCR is available but requires a valid Gemini API key with vision quota. Please check your API key."
             : error.message || "Failed to process document";
 
         res.status(status).json({

@@ -116,7 +116,13 @@ async function extractTextWithGeminiVision(filePath) {
         "Output ONLY the raw extracted text. Do NOT add any commentary, explanation, " +
         "or preamble. Start directly with the document content.";
 
-    const geminiModels = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro"];
+    const geminiModels = [
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash-lite",
+        "gemini-1.5-pro"
+    ];
 
     let lastError = null;
     for (const modelName of geminiModels) {

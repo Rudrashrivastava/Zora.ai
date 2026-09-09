@@ -26,15 +26,15 @@ function buildProviders(chatHistory) {
 
         console.log(`[AI] Gemini mode: ${isOAuth ? "OAuth Bearer Token (AQ.)" : "Standard API Key"}`);
 
-        // Tier 1: Gemini 3.6 Flash (Latest Google AI model)
-        providers.push({
-            name: "Gemini 3.6 Flash",
-            invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-3.6-flash")).invoke(chatHistory),
-        });
-        // Tier 2: Gemini 1.5 Flash
+        // Tier 1: Gemini 1.5 Flash (Primary — ultra fast, high quota)
         providers.push({
             name: "Gemini 1.5 Flash",
             invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-1.5-flash")).invoke(chatHistory),
+        });
+        // Tier 2: Gemini 1.5 Pro (Secondary — higher reasoning fallback)
+        providers.push({
+            name: "Gemini 1.5 Pro",
+            invoke: () => new ChatGoogleGenerativeAI(geminiConfig("gemini-1.5-pro")).invoke(chatHistory),
         });
     }
 
@@ -630,7 +630,9 @@ export async function generateResponse(messages, userId = null, userObj = null) 
 
         // 1. DETERMINISTIC RAG RETRIEVAL (If user has uploaded documents or asks document questions)
         let ragContextText = "";
-        if (userId) {
+        const isSimpleGreeting = /^(hi|hey|heyyy|hello|hola|greetings|good morning|good evening|good afternoon|how are you|what'?s up)\b/i.test(query) && query.length < 35;
+
+        if (userId && !isSimpleGreeting) {
             try {
                 const searchQuery = query || "uploaded document overview summary content";
                 const docs = await retrieveDocuments(searchQuery, userId, 5);
@@ -789,41 +791,51 @@ CORE RULES — FOLLOW STRICTLY:
 export async function generateChatTitle(message) {
     if (!message || !message.trim()) return "New Search";
 
-    const titleMessages = [
-        new SystemMessage("Generate a concise 2-4 word chat title summarizing the user request. Output ONLY the title text, no quotes, no markdown, no punctuation."),
-        new HumanMessage(`Message: "${message}"`),
-    ];
-
-    // Use same 3-tier failover for title generation
-    const providers = buildProviders(titleMessages);
-    for (const provider of providers) {
-        try {
-            const response = await provider.invoke();
-            let rawText = "";
-            if (typeof response?.text === "string" && response.text.trim()) {
-                rawText = response.text;
-            } else if (typeof response?.content === "string") {
-                rawText = response.content;
-            } else if (Array.isArray(response?.content)) {
-                rawText = response.content
-                    .map((c) => (typeof c === "string" ? c : c?.text || ""))
-                    .join("");
-            }
-
-            const title = rawText.replace(/["'#*`]/g, "").trim();
-            if (title && title.length > 0 && title.toLowerCase() !== "new chat") {
-                return title.slice(0, 50);
-            }
-        } catch (err) {
-            console.warn(`[generateChatTitle] ${provider.name} failed: ${err.message}. Trying next...`);
-        }
-    }
-
-    // Smart fallback: extract first 4 words from message
     const cleanMsg = message.trim().replace(/^["']|["']$/g, "").replace(/[\r\n]+/g, " ");
     const words = cleanMsg.split(/\s+/).slice(0, 4);
     const fallbackTitle = words
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
         .join(" ");
+
+    // Instant 0ms offline title generation for short prompts or simple greetings
+    if (cleanMsg.length <= 40) {
+        return fallbackTitle.length > 40 ? fallbackTitle.slice(0, 40) + "..." : fallbackTitle || "New Search";
+    }
+
+    try {
+        const titleMessages = [
+            new SystemMessage("Generate a concise 2-4 word chat title summarizing the user request. Output ONLY the title text, no quotes, no markdown, no punctuation."),
+            new HumanMessage(`Message: "${message}"`),
+        ];
+        const providers = buildProviders(titleMessages);
+        for (const provider of providers) {
+            try {
+                // Set strict 2-second timeout so title generation never blocks the chat response
+                const response = await Promise.race([
+                    provider.invoke(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Title generation timeout")), 2000)),
+                ]);
+
+                let rawText = "";
+                if (typeof response?.text === "string" && response.text.trim()) {
+                    rawText = response.text;
+                } else if (typeof response?.content === "string") {
+                    rawText = response.content;
+                } else if (Array.isArray(response?.content)) {
+                    rawText = response.content
+                        .map((c) => (typeof c === "string" ? c : c?.text || ""))
+                        .join("");
+                }
+
+                const title = rawText.replace(/["'#*`]/g, "").trim();
+                if (title && title.length > 0 && title.toLowerCase() !== "new chat") {
+                    return title.slice(0, 50);
+                }
+            } catch (err) {
+                console.warn(`[generateChatTitle] ${provider.name} skipped: ${err.message}`);
+            }
+        }
+    } catch (_) {}
+
     return fallbackTitle.length > 40 ? fallbackTitle.slice(0, 40) + "..." : fallbackTitle || "New Search";
 }

@@ -469,7 +469,7 @@ STRUCTURE TO GENERATE IN MARKDOWN:
                 const targetLoc = location && location.trim() ? location.trim() : "auto";
                 console.log(`[WeatherTool] Fetching dynamic live weather for "${targetLoc}"`);
                 const res = await fetch(`https://wttr.in/${encodeURIComponent(targetLoc)}?format=j1`, {
-                    headers: { "User-Agent": "ZoraAI/1.0" },
+                    headers: { "User-Agent": "XoraAI/1.0" },
                     signal: AbortSignal.timeout(6000),
                 });
 
@@ -713,15 +713,18 @@ export async function generateResponse(messages, userId = null, userObj = null) 
             contextBlock += `\n\n=== LIVE WEB SEARCH CONTEXT RESULTS ===\n${webContextText}\n========================================`;
         }
 
-        const systemPrompt = `You are Zora.ai, an advanced AI search and knowledge assistant (like Perplexity AI).
+        const systemPrompt = `You are Xora.ai, an advanced AI search and knowledge assistant (like Perplexity AI).
 
 EXACT LIVE CURRENT TIME & DATE (IST / Indian Standard Time): ${currentTimeStr} IST on ${currentDateStr} (Year: ${currentYear}).
 ${userProfileBlock}${contextBlock}
 
 CORE RULES — FOLLOW STRICTLY:
-1. FOR USER IDENTITY / ACCOUNT QUESTIONS ("What is my name?", "Who am I?", "What is my email?"):
+1. FOR AI IDENTITY / NAME QUESTIONS ("What is your name?", "Who are you?", "What AI are you?"):
+   - Always state clearly: "I am **Xora.ai**, an advanced AI search and knowledge engine."
+
+2. FOR USER IDENTITY / ACCOUNT QUESTIONS ("What is my name?", "Who am I?", "What is my email?"):
    - Always state the user's name and email directly from the LOGGED-IN USER PROFILE above.
-   - Example: "Your registered username on Zora.ai is **[Name]** and your email is **[Email]**."
+   - Example: "Your registered username on Xora.ai is **[Name]** and your email is **[Email]**."
 
 2. FOR CURRENT TIME / CLOCK / TODAY'S DATE & GROUND TRUTH ANCHORING:
    - State the current time & date directly from the system prompt context above (${currentTimeStr} IST on ${currentDateStr}).
@@ -795,7 +798,7 @@ CORE RULES — FOLLOW STRICTLY:
                 const name = userObj.username || userObj.name || userObj.fullName || "User";
                 const email = userObj.email || "";
                 return {
-                    answer: `Hey **${name}**! Your registered email on Zora.ai is **${email}**.`,
+                    answer: `Hey **${name}**! Your registered email on Xora.ai is **${email}**.`,
                     sources: collectedSources,
                 };
             }
@@ -803,7 +806,7 @@ CORE RULES — FOLLOW STRICTLY:
             if (/^(hi|hey|heyyy|hello|hola|greetings|good morning|good evening)\b/i.test(query)) {
                 const name = userObj?.username || userObj?.name || "there";
                 return {
-                    answer: `Hey ${name}! 👋 Welcome back to Zora.ai! How can I assist you today?`,
+                    answer: `Hey ${name}! 👋 Welcome back to Xora.ai! How can I assist you today?`,
                     sources: collectedSources,
                 };
             }

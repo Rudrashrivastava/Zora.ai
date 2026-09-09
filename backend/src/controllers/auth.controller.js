@@ -139,7 +139,7 @@ export async function register(req, res) {
         try {
             await sendEmail({
                 to: email,
-                subject: "Verify your Zora.ai account",
+                subject: "Verify your Xora.ai account",
                 html: `
                 <!DOCTYPE html>
                 <html lang="en">
@@ -165,12 +165,12 @@ export async function register(req, res) {
                 <div class="card">
                 <h1>Verify your email</h1>
                 <p>Hi <strong>${username}</strong>,</p>
-                <p>Welcome to Zora.ai. Click the button below to verify your email and complete registration.</p>
+                <p>Welcome to Xora.ai. Click the button below to verify your email and complete registration.</p>
                 <a href="${verificationUrl}" class="button" target="_blank">Verify Email Address</a>
                 <p>This link expires in <strong>15 minutes</strong>. If you didn't create this account, ignore this email.</p>
-                <p>Thanks,<br><strong>The Zora.ai Team</strong></p>
+                <p>Thanks,<br><strong>The Xora.ai Team</strong></p>
                 </div>
-                <div class="footer"><p>© 2026 Zora.ai. All rights reserved.</p></div>
+                <div class="footer"><p>© 2026 Xora.ai. All rights reserved.</p></div>
                 </div>
                 </div>
                 </body>

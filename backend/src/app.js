@@ -46,7 +46,7 @@ app.use(
 
 // Health & Ping Endpoints (UptimeRobot / Monitoring)
 app.get(['/health', '/ping'], (req, res) => {
-    res.status(200).json({ status: 'healthy', service: 'Zora AI Engine' });
+    res.status(200).json({ status: 'healthy', service: 'Xora AI Engine' });
 });
 
 // Kubernetes Liveness Probe: Quick process check
@@ -90,7 +90,7 @@ if (staticDir) {
 } else {
     // Root API fallback if dist is not present
     app.get("/", (req, res) => {
-        res.json({ message: "Zora.ai API Server is running", status: "ok" });
+        res.json({ message: "Xora.ai API Server is running", status: "ok" });
     });
 }
 

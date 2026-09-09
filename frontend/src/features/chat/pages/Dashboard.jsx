@@ -20,7 +20,7 @@ import { useChat } from "../hooks/useChat";
 // ICONS & LOGOS
 // ======================================================
 
-const ZoraLogo = ({ size = 40, stops = ["#22d3ee", "#3b82f6", "#8b5cf6"] }) => (
+const XoraLogo = ({ size = 40, stops = ["#22d3ee", "#3b82f6", "#8b5cf6"] }) => (
     <div
         className="flex shrink-0 items-center justify-center rounded-xl bg-zinc-900 border border-white/10 shadow-inner"
         style={{ width: size, height: size }}
@@ -33,7 +33,7 @@ const ZoraLogo = ({ size = 40, stops = ["#22d3ee", "#3b82f6", "#8b5cf6"] }) => (
             className="drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]"
         >
             <defs>
-                <linearGradient id={`zoraGrad-${stops[0].replace("#", "")}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <linearGradient id={`xoraGrad-${stops[0].replace("#", "")}`} x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor={stops[0]} />
                     <stop offset="50%" stopColor={stops[1]} />
                     <stop offset="100%" stopColor={stops[2]} />
@@ -41,17 +41,16 @@ const ZoraLogo = ({ size = 40, stops = ["#22d3ee", "#3b82f6", "#8b5cf6"] }) => (
             </defs>
             <path
                 d="M50 5 L88 27 L88 73 L50 95 L12 73 L12 27 Z"
-                fill={`url(#zoraGrad-${stops[0].replace("#", "")})`}
+                fill={`url(#xoraGrad-${stops[0].replace("#", "")})`}
                 opacity="0.15"
-                stroke={`url(#zoraGrad-${stops[0].replace("#", "")})`}
+                stroke={`url(#xoraGrad-${stops[0].replace("#", "")})`}
                 strokeWidth="3"
             />
             <path
-                d="M32 32 H68 L32 68 H68"
-                stroke={`url(#zoraGrad-${stops[0].replace("#", "")})`}
+                d="M30 30 L70 70 M70 30 L30 70"
+                stroke={`url(#xoraGrad-${stops[0].replace("#", "")})`}
                 strokeWidth="10"
                 strokeLinecap="round"
-                strokeLinejoin="round"
             />
             <circle cx="50" cy="50" r="5" fill="#ffffff" className="animate-ping" style={{ transformOrigin: "center" }} />
             <circle cx="50" cy="50" r="4" fill="#ffffff" />
@@ -323,7 +322,7 @@ const Dashboard = () => {
     const [mobileSidebar, setMobileSidebar] = useState(false);
     const [showKnowledgeModal, setShowKnowledgeModal] = useState(false);
     const [showThemePicker, setShowThemePicker] = useState(false);
-    const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem("zora_theme") || "cyan");
+    const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem("xora_theme") || localStorage.getItem("zora_theme") || "cyan");
     const activeTheme = THEMES[currentTheme] || THEMES.cyan;
     const [copiedId, setCopiedId] = useState(null);
     const [isSending, setIsSending] = useState(false);
@@ -610,9 +609,9 @@ const Dashboard = () => {
             >
                 <div className="mb-5 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <ZoraLogo size={38} stops={activeTheme.logoStops} />
+                        <XoraLogo size={38} stops={activeTheme.logoStops} />
                         <div>
-                            <h1 className="text-lg font-bold tracking-tight">Zora.ai</h1>
+                            <h1 className="text-lg font-bold tracking-tight">Xora.ai</h1>
                             <p className={`text-[10px] font-medium ${activeTheme.accentText}`}>Search & RAG Engine</p>
                         </div>
                     </div>
@@ -838,8 +837,8 @@ const Dashboard = () => {
                             <MenuIcon />
                         </button>
                         <div className="flex items-center gap-2">
-                            <ZoraLogo size={28} />
-                            <span className="font-semibold text-sm md:hidden">Zora.ai</span>
+                            <XoraLogo size={28} />
+                            <span className="font-semibold text-sm md:hidden">Xora.ai</span>
                         </div>
                         {currentChat && (
                             <div className="flex items-center gap-1.5 min-w-0">
@@ -896,7 +895,7 @@ const Dashboard = () => {
                                             key={t.id}
                                             onClick={() => {
                                                 setCurrentTheme(t.id);
-                                                localStorage.setItem("zora_theme", t.id);
+                                                localStorage.setItem("xora_theme", t.id);
                                                 setShowThemePicker(false);
                                             }}
                                             className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition ${
@@ -964,7 +963,7 @@ const Dashboard = () => {
                     <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-4 pb-48 pt-6 md:px-8 md:pt-8">
                         {!currentChat && messages.length === 0 && (
                             <div className="flex flex-1 flex-col items-center justify-center py-12">
-                                <ZoraLogo size={64} />
+                                <XoraLogo size={64} />
                                 <h1 className="mt-6 text-center text-3xl font-bold tracking-tight md:text-4xl">
                                     Where knowledge begins.
                                 </h1>
@@ -1004,8 +1003,8 @@ const Dashboard = () => {
                                                 {/* SENDER BADGE */}
                                                 {!isUser && (
                                                     <div className={`mb-2 flex items-center gap-2 text-xs font-semibold ${activeTheme.accentText}`}>
-                                                        <ZoraLogo size={20} />
-                                                        <span>Zora.ai Answer</span>
+                                                        <XoraLogo size={20} />
+                                                        <span>Xora.ai Answer</span>
                                                     </div>
                                                 )}
 
@@ -1209,7 +1208,7 @@ const Dashboard = () => {
                                                                             const res = await api.post(
                                                                                 "/api/pdf/generate",
                                                                                 {
-                                                                                    title: currentChat?.title || "Zora_Notes",
+                                                                                    title: currentChat?.title || "Xora_Notes",
                                                                                     content: message.content,
                                                                                 },
                                                                                 { responseType: "blob" }
@@ -1218,7 +1217,7 @@ const Dashboard = () => {
                                                                             const downloadUrl = window.URL.createObjectURL(blob);
                                                                             const a = document.createElement("a");
                                                                             a.href = downloadUrl;
-                                                                            a.download = `${(currentChat?.title || "Zora_Study_Notes").replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+                                                                            a.download = `${(currentChat?.title || "Xora_Study_Notes").replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
                                                                             document.body.appendChild(a);
                                                                             a.click();
                                                                             document.body.removeChild(a);
@@ -1333,7 +1332,7 @@ const Dashboard = () => {
                                 </div>
                             </form>
                             <div className="px-2 pt-1 text-center text-[10px] text-zinc-600">
-                                Zora.ai synthesizes live web data & vector RAG documents. Verify critical info.
+                                Xora.ai synthesizes live web data & vector RAG documents. Verify critical info.
                             </div>
                         </div>
                     </div>

@@ -36,7 +36,7 @@ export function generateNotesPDF({ title, subject, semester, content }) {
                 margins: { top: 50, bottom: 60, left: 50, right: 50 },
                 info: {
                     Title: cleanTitle,
-                    Author: "Zora.ai AI Tutor",
+                    Author: "Xora.ai AI Tutor",
                     Subject: cleanSubject,
                 },
             });
@@ -53,7 +53,7 @@ export function generateNotesPDF({ title, subject, semester, content }) {
                 .fillColor("#38bdf8")
                 .fontSize(20)
                 .font("Helvetica-Bold")
-                .text("Zora.ai - Engineering Study Notes", 50, 20);
+                .text("Xora.ai - Engineering Study Notes", 50, 20);
 
             doc
                 .fillColor("#9ca3af")

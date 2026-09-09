@@ -8,7 +8,7 @@ import api from "../../../lib/axios";
 // ZORA LOGO
 // ======================================================
 
-const ZoraLogo = ({ size = 42 }) => (
+const XoraLogo = ({ size = 42 }) => (
     <div 
         className="flex shrink-0 items-center justify-center rounded-xl bg-zinc-900 border border-[#31b8c6]/30 shadow-inner"
         style={{
@@ -24,29 +24,25 @@ const ZoraLogo = ({ size = 42 }) => (
             className="drop-shadow-[0_0_8px_rgba(49,184,198,0.5)]"
         >
             <defs>
-                <linearGradient id="zoraGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <linearGradient id="xoraGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#22d3ee" />
                     <stop offset="50%" stopColor="#3b82f6" />
                     <stop offset="100%" stopColor="#8b5cf6" />
                 </linearGradient>
             </defs>
-            {/* Hexagon/Shield background shape */}
             <path
                 d="M50 5 L88 27 L88 73 L50 95 L12 73 L12 27 Z"
-                fill="url(#zoraGrad)"
+                fill="url(#xoraGrad)"
                 opacity="0.15"
-                stroke="url(#zoraGrad)"
+                stroke="url(#xoraGrad)"
                 strokeWidth="3"
             />
-            {/* Inner stylized Z */}
             <path
-                d="M32 32 H68 L32 68 H68"
-                stroke="url(#zoraGrad)"
+                d="M30 30 L70 70 M70 30 L30 70"
+                stroke="url(#xoraGrad)"
                 strokeWidth="10"
                 strokeLinecap="round"
-                strokeLinejoin="round"
             />
-            {/* Center Core Dot */}
             <circle cx="50" cy="50" r="5" fill="#ffffff" className="animate-ping" style={{ transformOrigin: "center" }} />
             <circle cx="50" cy="50" r="4" fill="#ffffff" />
         </svg>
@@ -255,7 +251,7 @@ const ShareChat = () => {
                     const sender =
                         message.role === "user"
                             ? "You"
-                            : "Zora.ai";
+                            : "Xora.ai";
 
                     return `${sender}: ${
                         message.content || ""
@@ -288,7 +284,7 @@ const ShareChat = () => {
         return (
             <main className="flex min-h-screen items-center justify-center bg-[#070910] text-white">
                 <div className="flex flex-col items-center">
-                    <ZoraLogo size={58} />
+                    <XoraLogo size={58} />
 
                     <div className="mt-5 flex items-center gap-2 text-sm text-zinc-500">
                         <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-400" />
@@ -313,7 +309,7 @@ const ShareChat = () => {
             <main className="flex min-h-screen items-center justify-center bg-[#070910] px-4 text-white">
                 <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0c1018] p-8 text-center">
                     <div className="flex justify-center">
-                        <ZoraLogo size={55} />
+                        <XoraLogo size={55} />
                     </div>
 
                     <h1 className="mt-6 text-2xl font-bold">
@@ -329,7 +325,7 @@ const ShareChat = () => {
                         to="/"
                         className="mt-6 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-zinc-200"
                     >
-                        Go to Zora.ai
+                        Go to Xora.ai
                     </Link>
                 </div>
             </main>
@@ -349,11 +345,11 @@ const ShareChat = () => {
                 <div className="mx-auto flex h-16 w-full max-w-4xl items-center justify-between px-4 md:px-6">
 
                     <div className="flex items-center gap-3">
-                        <ZoraLogo size={36} />
+                        <XoraLogo size={36} />
 
                         <div>
                             <h1 className="font-bold">
-                                Zora.ai
+                                Xora.ai
                             </h1>
 
                             <p className="text-[10px] text-zinc-600">
@@ -379,7 +375,7 @@ const ShareChat = () => {
                             to="/"
                             className="hidden rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black hover:bg-zinc-200 sm:block"
                         >
-                            Try Zora.ai
+                            Try Xora.ai
                         </Link>
 
                     </div>
@@ -395,7 +391,7 @@ const ShareChat = () => {
                 <div className="mb-10">
 
                     <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-cyan-400">
-                        Zora.ai conversation
+                        Xora.ai conversation
                     </div>
 
                     <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
@@ -439,7 +435,7 @@ const ShareChat = () => {
                                         <span>
                                             {isUser
                                                 ? "You"
-                                                : "Zora.ai"}
+                                                : "Xora.ai"}
                                         </span>
 
                                     </div>
@@ -626,11 +622,11 @@ const ShareChat = () => {
                 <div className="mt-16 border-t border-white/10 pt-8 text-center">
 
                     <div className="flex justify-center">
-                        <ZoraLogo size={38} />
+                        <XoraLogo size={38} />
                     </div>
 
                     <p className="mt-3 text-sm font-medium text-zinc-400">
-                        This conversation was shared from Zora.ai
+                        This conversation was shared from Xora.ai
                     </p>
 
                     <Link

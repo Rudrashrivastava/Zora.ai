@@ -17,7 +17,7 @@ const LOGOS = [
   { name: "Halcyn", letter: "H", gradient: "from-violet-500 to-fuchsia-600" },
 ];
 
-const ZoraLogo = ({ size = 32 }) => (
+const XoraLogo = ({ size = 32 }) => (
   <div className="flex items-center gap-2.5 cursor-pointer group">
     <div className="relative flex items-center justify-center">
       <svg width={size} height={size} viewBox="0 0 40 40" fill="none" className="transition-transform duration-300 group-hover:scale-105">
@@ -34,7 +34,7 @@ const ZoraLogo = ({ size = 32 }) => (
       </svg>
     </div>
     <span className="font-general-sans text-xl font-bold tracking-tight text-[#f3f3f2] group-hover:text-white transition-colors">
-      Zora<span className="text-[#a855f7]">.ai</span>
+      Xora<span className="text-[#a855f7]">.ai</span>
     </span>
   </div>
 );
@@ -129,7 +129,7 @@ const LandingPage = () => {
           <nav className="full-width py-5 px-6 sm:px-8 flex flex-row items-center justify-between">
             {/* Left: Logo */}
             <Link to="/">
-              <ZoraLogo size={32} />
+              <XoraLogo size={32} />
             </Link>
 
             {/* Center: Nav Items */}
@@ -192,7 +192,7 @@ const LandingPage = () => {
         <main className="flex-1 flex flex-col items-center justify-center text-center px-4 py-12 relative z-10 max-w-7xl mx-auto w-full">
           {/* Headline: "Power AI" */}
           <h1 className="font-general-sans font-normal leading-[1.02] tracking-[-0.024em] text-[80px] sm:text-[140px] md:text-[180px] lg:text-[220px] select-none">
-            <span className="text-[#f3f3f2]">Power </span>
+            <span className="text-[#f3f3f2]">Xora </span>
             <span
               className="bg-clip-text text-transparent"
               style={{

@@ -37,7 +37,7 @@ const transporter = nodemailer.createTransport({
 export async function sendEmail({ to, subject, html, text }) {
     // 1. Resend HTTPS REST API (Port 443 - Unblockable on Render)
     if (process.env.RESEND_API_KEY) {
-        const fromAddress = process.env.RESEND_FROM_EMAIL || "Zora.ai <onboarding@resend.dev>";
+        const fromAddress = process.env.RESEND_FROM_EMAIL || "Xora.ai <onboarding@resend.dev>";
         const isDefaultDevDomain = fromAddress.includes("onboarding@resend.dev");
         const resendOwnerEmail = (process.env.RESEND_OWNER_EMAIL || process.env.GOOGLE_USER || process.env.EMAIL_USER || "").toLowerCase();
         const recipientEmail = (to || "").toLowerCase();
@@ -85,7 +85,7 @@ export async function sendEmail({ to, subject, html, text }) {
     if (process.env.BREVO_API_KEY) {
         const key = process.env.BREVO_API_KEY.trim();
         const senderEmail = process.env.GOOGLE_USER || process.env.EMAIL_USER || "rudrashrivastava45@gmail.com";
-        const senderName = process.env.EMAIL_SENDER_NAME || "Zora.ai";
+        const senderName = process.env.EMAIL_SENDER_NAME || "Xora.ai";
 
         // Case A: Brevo REST API Key (starts with xkeysib-)
 
@@ -153,9 +153,9 @@ export async function sendEmail({ to, subject, html, text }) {
 
     // 3. Nodemailer OAuth2 / Gmail SMTP Fallback
 
-    const senderName = process.env.EMAIL_SENDER_NAME || "Zora.ai";
+    const senderName = process.env.EMAIL_SENDER_NAME || "Xora.ai";
     const mailOptions = {
-        from: `"${senderName}" <${process.env.GOOGLE_USER || "noreply@zora.ai"}>`,
+        from: `"${senderName}" <${process.env.GOOGLE_USER || "noreply@xora.ai"}>`,
         to,
         subject,
         html,

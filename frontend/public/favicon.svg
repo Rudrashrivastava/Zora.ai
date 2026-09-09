@@ -1,10 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
   <defs>
-    <!-- Vibrant Glowing Gradients -->
-    <linearGradient id="zoraGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8B5CF6" />
-      <stop offset="50%" stop-color="#3B82F6" />
-      <stop offset="100%" stop-color="#06B6D4" />
+    <linearGradient id="xoraGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="50%" stop-color="#A855F7" />
+      <stop offset="100%" stop-color="#FCD34D" />
     </linearGradient>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0F172A" />
@@ -19,16 +18,15 @@
   <!-- Rounded Futuristic Dark Card Frame -->
   <rect width="90" height="90" x="5" y="5" rx="22" fill="url(#bgGrad)" stroke="#334155" stroke-width="2.5"/>
   
-  <!-- Futuristic Glowing Z Emblem -->
-  <path d="M 28 30 L 72 30 L 36 68 L 72 68" 
+  <!-- Futuristic Glowing X Emblem -->
+  <path d="M 30 30 L 70 70 M 70 30 L 30 70" 
         fill="none" 
-        stroke="url(#zoraGrad)" 
+        stroke="url(#xoraGrad)" 
         stroke-width="11" 
         stroke-linecap="round" 
-        stroke-linejoin="round"
         filter="url(#glow)"/>
         
   <!-- AI Intelligence Core Sparkle -->
-  <circle cx="72" cy="30" r="4.5" fill="#38BDF8"/>
-  <circle cx="28" cy="68" r="4.5" fill="#A855F7"/>
+  <circle cx="50" cy="50" r="8" fill="#A855F7"/>
+  <circle cx="50" cy="50" r="4" fill="#FFFFFF"/>
 </svg>

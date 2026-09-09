@@ -44,6 +44,11 @@ app.use(
     })
 );
 
+// Health & Ping Endpoints (UptimeRobot / Monitoring)
+app.get(['/health', '/ping'], (req, res) => {
+    res.status(200).json({ status: 'healthy', service: 'Zora AI Engine' });
+});
+
 // Kubernetes Liveness Probe: Quick process check
 app.get("/healthz", (req, res) => {
     res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
@@ -77,7 +82,7 @@ const staticDir = fs.existsSync(publicPath)
 if (staticDir) {
     app.use(express.static(staticDir));
     app.use((req, res, next) => {
-        if (req.path.startsWith("/api") || req.path.startsWith("/healthz") || req.path.startsWith("/readyz") || req.path.startsWith("/socket.io")) {
+        if (req.path.startsWith("/api") || req.path.startsWith("/health") || req.path.startsWith("/ping") || req.path.startsWith("/healthz") || req.path.startsWith("/readyz") || req.path.startsWith("/socket.io")) {
             return next();
         }
         res.sendFile(path.join(staticDir, "index.html"));

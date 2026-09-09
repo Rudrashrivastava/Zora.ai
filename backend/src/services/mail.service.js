@@ -36,36 +36,47 @@ const transporter = nodemailer.createTransport({
 
 export async function sendEmail({ to, subject, html, text }) {
     // 1. Resend HTTPS REST API (Port 443 - Unblockable on Render)
-    
     if (process.env.RESEND_API_KEY) {
-        try {
-            const fromAddress = process.env.RESEND_FROM_EMAIL || "Zora.ai <onboarding@resend.dev>";
-            console.log("[Email] Sending via Resend HTTPS REST API to:", to);
-            const res = await fetch("https://api.resend.com/emails", {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    from: fromAddress,
-                    to: [to],
-                    subject,
-                    html,
-                    text,
-                }),
-            });
+        const fromAddress = process.env.RESEND_FROM_EMAIL || "Zora.ai <onboarding@resend.dev>";
+        const isDefaultDevDomain = fromAddress.includes("onboarding@resend.dev");
+        const resendOwnerEmail = (process.env.RESEND_OWNER_EMAIL || process.env.GOOGLE_USER || process.env.EMAIL_USER || "").toLowerCase();
+        const recipientEmail = (to || "").toLowerCase();
 
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(`Resend API HTTP ${res.status}: ${JSON.stringify(errData)}`);
+        // Resend's onboarding@resend.dev domain ONLY delivers to the Resend account owner's email.
+        // If recipient is different and no custom domain is configured, skip Resend so Brevo/Gmail SMTP delivers to recipient.
+        const canUseResend = !isDefaultDevDomain || (resendOwnerEmail && recipientEmail === resendOwnerEmail);
+
+        if (canUseResend) {
+            try {
+                console.log("[Email] Sending via Resend HTTPS REST API to:", to);
+                const res = await fetch("https://api.resend.com/emails", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        from: fromAddress,
+                        to: [to],
+                        subject,
+                        html,
+                        text,
+                    }),
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(`Resend API HTTP ${res.status}: ${JSON.stringify(errData)}`);
+                }
+
+                const data = await res.json();
+                console.log("[Email] Resend email delivered successfully:", data?.id);
+                return data;
+            } catch (resendErr) {
+                console.error("[Email] Resend API error, trying Brevo fallback:", resendErr.message);
             }
-
-            const data = await res.json();
-            console.log("[Email] Resend email delivered successfully:", data?.id);
-            return data;
-        } catch (resendErr) {
-            console.error("[Email] Resend API error, trying Brevo fallback:", resendErr.message);
+        } else {
+            console.log("[Email] Resend using default onboarding domain — skipping Resend for external recipient, falling back to Brevo/Gmail SMTP for guaranteed inbox delivery.");
         }
     }
 

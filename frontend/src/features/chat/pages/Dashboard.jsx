@@ -567,8 +567,8 @@ const Dashboard = () => {
             localStorage.removeItem("token");
             localStorage.removeItem("accessToken");
             localStorage.removeItem("refreshToken");
-            dispatch(setUser(null));
             navigate("/", { replace: true });
+            dispatch(setUser(null));
         }
     }, [dispatch, navigate]);
 
